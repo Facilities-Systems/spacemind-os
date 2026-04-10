@@ -17,6 +17,8 @@ _TEMPLATE_MAP: dict[str, str] = {
     RequestType.FLOOR_RENOVATION: "floor_renovation.yaml",
     RequestType.CANTEEN_SETUP: "canteen_setup.yaml",
     RequestType.MAINTENANCE: "maintenance.yaml",
+    RequestType.SPACE_CHANGE: "space_change.yaml",
+    RequestType.VENDOR_COORDINATION: "vendor_coordination.yaml",
 }
 
 

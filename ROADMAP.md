@@ -27,35 +27,35 @@ This roadmap tracks the sequenced path from MVP to world-class, production-grade
 
 ### Backend
 
-- 🔲 **1. Missing knowledge templates**
+- ✅ **1. Missing knowledge templates**
   - Add `space_change.yaml` (partitions, layout reconfigurations)
   - Add `vendor_coordination.yaml` (procurement, tendering, SLA management)
   - Files: `src/spacemind/knowledge/templates/`
 
-- 🔲 **2. Error handling hardening**
+- ✅ **2. Error handling hardening**
   - Define custom exception types: `AIError`, `DecompositionError`, `ValidationError`
   - Wrap AI client calls to never leak raw AI output in HTTP 500 responses
   - Add try/except in repository (catch SQLAlchemy errors, re-raise clean)
   - Files: `src/spacemind/ai/client.py`, `src/spacemind/api/routes.py`, `src/spacemind/storage/repository.py`
 
-- 🔲 **3. Token usage tracking**
+- ✅ **3. Token usage tracking**
   - Log input/output token counts from every Claude API response
   - Store token usage in `DecompositionRecord` (in `result_json` or dedicated columns)
   - Files: `src/spacemind/ai/client.py`, `src/spacemind/domain/models.py`
 
-- 🔲 **4. Request/response logging middleware**
+- ✅ **4. Request/response logging middleware**
   - FastAPI middleware: method, path, status code, duration, correlation ID
   - File: `src/spacemind/main.py`
 
-- 🔲 **5. Rate limiting**
+- ✅ **5. Rate limiting**
   - Add `slowapi` for per-IP rate limiting on `/decompose` (10 req/min, configurable)
   - Files: `src/spacemind/api/routes.py`, `requirements.txt`
 
-- 🔲 **6. Alembic migrations setup**
+- ✅ **6. Alembic migrations setup**
   - Alembic is in `requirements.txt` but not configured — initialize and create baseline migration
   - Files: `alembic/`, `alembic.ini`
 
-- 🔲 **7. Test coverage — unit (backend)**
+- ✅ **7. Test coverage — unit (backend)**
   - AIClient: mock Anthropic SDK, test retry logic, JSON parsing
   - Decomposer: mock AIClient, test full pipeline
   - Validator: all validation paths
@@ -63,31 +63,31 @@ This roadmap tracks the sequenced path from MVP to world-class, production-grade
   - Repository: save/get/list with SQLite in-memory
   - Files: `tests/unit/test_ai_client.py`, `test_decomposer.py`, `test_validator.py`, `test_repository.py`
 
-- 🔲 **8. History search/filter API**
+- ✅ **8. History search/filter API**
   - Add query params to `GET /history`: `?request_type=`, `?location_id=`, `?priority=`, `?from_date=`, `?to_date=`
   - Files: `src/spacemind/api/routes.py`, `src/spacemind/storage/repository.py`
 
 ### Frontend
 
-- 🔲 **9. Error boundary**
+- ✅ **9. Error boundary**
   - React `ErrorBoundary` wrapping `<Layout>` — friendly error page with retry
   - Files: `frontend/src/components/ui/ErrorBoundary.tsx`, `frontend/src/components/layout/Layout.tsx`
 
-- 🔲 **10. Toast notification system**
+- ✅ **10. Toast notification system**
   - Install `react-hot-toast`, add `<Toaster>` to `App.tsx`
   - Success toast after decompose, error toast on failure
   - Files: `frontend/src/App.tsx`, `frontend/src/pages/DecomposePage.tsx`
 
-- 🔲 **11. Form validation (Zod)**
+- ✅ **11. Form validation (Zod)**
   - Install `zod` + `react-hook-form`
   - Field-level validation on `RequestForm` (min 10 chars, required location)
   - File: `frontend/src/components/decompose/RequestForm.tsx`
 
-- 🔲 **12. Pagination UI for History**
+- ✅ **12. Pagination UI for History**
   - Previous/Next controls wired to `offset` param in `useHistory(limit, offset)`
   - File: `frontend/src/pages/HistoryPage.tsx`
 
-- 🔲 **13. Search and filter on History**
+- ✅ **13. Search and filter on History**
   - Filter bar: request type dropdown, location dropdown, date range pickers
   - Wire to new backend query params (item 8)
   - Files: `frontend/src/pages/HistoryPage.tsx`, `frontend/src/hooks/useDecompose.ts`

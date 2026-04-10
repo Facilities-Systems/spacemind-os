@@ -1,0 +1,146 @@
+# SpaceMind OS — Space Change / Reconfiguration Template
+# Applies to: layout reconfigurations, partition changes, open-plan conversions,
+#             enclosing open areas, demountable wall installations, desk reconfigurations
+
+type: space_change
+description: >
+  Reconfiguration of an existing occupied space — adding or removing partitions,
+  converting open-plan to enclosed offices or vice versa, relocating internal walls,
+  and adjusting desk layouts. Requires careful coordination with M&E as services
+  must follow the new layout.
+
+phases:
+  - name: Feasibility & Design
+    order: 1
+    description: Understand the current space and design the new layout before touching anything.
+    tasks:
+      - name: Survey existing space — as-built drawings, M&E routes, structural elements
+        responsible: facilities_manager
+        duration_hours: 4
+        risks:
+          - Existing M&E services may conflict with proposed new partition lines
+          - Structural beams or columns hidden behind existing partitions
+      - name: Produce proposed layout drawing — get stakeholder sign-off
+        responsible: facilities_manager
+        duration_hours: 8
+        notes: Never move a single panel without a signed-off drawing. This is the #1 source of rework.
+      - name: Landlord approval for partition changes (rented buildings)
+        responsible: legal
+        landlord_approval_required: true
+        duration_hours: 80
+        risks:
+          - Landlord may restrict demising wall changes — check lease carefully
+      - name: Assess impact on means of escape (fire exits, escape routes)
+        responsible: vendor
+        duration_hours: 4
+        risks:
+          - CRITICAL: Reconfiguration must not reduce fire exit capacity or block escape routes
+      - name: Check HVAC zoning — new layout may require re-zoning of aircon
+        responsible: vendor
+        duration_hours: 4
+        risks:
+          - Enclosed offices created from open-plan will have HVAC imbalance if not re-zoned
+      - name: Assess lighting — new partitions may block natural light or create dark zones
+        responsible: electrician
+        duration_hours: 2
+
+  - name: M&E Adjustments (Pre-partition)
+    order: 2
+    description: >
+      Adjust services BEFORE partitions go up. Once walls are installed, adjusting
+      services is far more expensive and disruptive.
+    tasks:
+      - name: Relocate power outlets and data points to align with new layout
+        responsible: electrician
+        duration_hours: 16
+        landlord_approval_required: true
+        risks:
+          - Floor boxes in wrong position after layout change — expensive to move post-partition
+      - name: Extend or re-route data cabling to new desk positions
+        responsible: it_team
+        duration_hours: 16
+      - name: Adjust HVAC diffusers and thermostat zones for new layout
+        responsible: vendor
+        duration_hours: 8
+      - name: Relocate or add sprinkler heads to comply with new partition layout
+        responsible: vendor
+        landlord_approval_required: true
+        duration_hours: 8
+        risks:
+          - Fire suppression must cover all new enclosed spaces — not optional
+      - name: Adjust lighting circuits for new enclosed zones
+        responsible: electrician
+        duration_hours: 8
+
+  - name: Partition Installation / Removal
+    order: 3
+    description: Physical installation of new partitions or removal of existing ones.
+    tasks:
+      - name: Procure demountable partition system (lead time 3–6 weeks)
+        responsible: facilities_manager
+        duration_hours: 4
+        risks:
+          - Long lead times — order at design sign-off, not when works are starting
+      - name: Protect floor and adjacent furniture during installation
+        responsible: contractor
+        duration_hours: 2
+      - name: Install or remove partition panels, frames, and doors
+        responsible: vendor
+        duration_hours: 32
+        notes: >
+          Demountable systems preferred over drywall — can be reconfigured again
+          without demolition costs. Specify this in the contract.
+      - name: Install glazed panels where natural light transfer is required
+        responsible: vendor
+        duration_hours: 8
+      - name: Make good ceiling grid at partition heads
+        responsible: contractor
+        duration_hours: 4
+        notes: Partition heads must connect cleanly to ceiling grid — coordinate with ceiling
+      - name: Touch-up painting at partition junctions and skirting
+        responsible: vendor
+        duration_hours: 8
+
+  - name: Furniture Reconfiguration
+    order: 4
+    description: Move furniture to match the new layout.
+    tasks:
+      - name: Produce detailed desk/seating plan aligned to new layout
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Brief staff on new seating arrangements
+        responsible: hr
+        duration_hours: 1
+      - name: Move workstations, storage, and screens to new positions
+        responsible: internal
+        duration_hours: 8
+      - name: Reconnect IT equipment at new desk positions
+        responsible: it_team
+        duration_hours: 4
+
+  - name: Signage & Commissioning
+    order: 5
+    description: Update signage and confirm the reconfigured space is fully functional.
+    tasks:
+      - name: Update room/area signage and emergency evacuation plan
+        responsible: internal
+        duration_hours: 4
+        risks:
+          - Out-of-date evacuation drawings are a health & safety liability
+      - name: Update floor plans in asset register and building management system
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Snagging walkthrough — document all defects with contractor
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Staff orientation — walk new occupants through changed layout
+        responsible: facilities_manager
+        duration_hours: 1
+
+typical_duration_days: 21
+key_risks:
+  - M&E services not adjusted before partitions installed — expensive rework
+  - Partition lines block fire escape routes — building regulations violation
+  - Landlord approval not obtained before works start — breach of lease
+  - HVAC re-zoning missed — enclosed offices become too hot or too cold
+  - Demountable system lead times not accounted for — delays entire programme

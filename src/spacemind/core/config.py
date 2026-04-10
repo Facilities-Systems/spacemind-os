@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     enable_history: bool = True
     enable_vector_memory: bool = False
 
+    # Rate limiting
+    decompose_rate_limit: str = "10/minute"
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

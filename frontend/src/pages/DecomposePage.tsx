@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { Header } from '../components/layout/Header'
 import { RequestForm } from '../components/decompose/RequestForm'
 import { ResultView } from '../components/decompose/ResultView'
@@ -7,12 +8,23 @@ import { useDecompose } from '../hooks/useDecompose'
 import type { DecompositionResult } from '../types'
 
 export function DecomposePage() {
-  const { mutate, isPending, isError, error } = useDecompose()
+  const { mutate, isPending } = useDecompose()
   const [result, setResult] = useState<DecompositionResult | null>(null)
 
   const handleSubmit = (req: Parameters<typeof mutate>[0]) => {
     setResult(null)
-    mutate(req, { onSuccess: setResult })
+    mutate(req, {
+      onSuccess: (data) => {
+        setResult(data)
+        toast.success(`Plan generated — ${data.total_tasks} tasks across ${data.phases.length} phases`)
+      },
+      onError: (err: unknown) => {
+        const msg =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+          (err instanceof Error ? err.message : 'Something went wrong')
+        toast.error(msg)
+      },
+    })
   }
 
   return (
@@ -27,12 +39,6 @@ export function DecomposePage() {
           {!result && !isPending && (
             <div className="max-w-2xl mx-auto">
               <RequestForm onSubmit={handleSubmit} isLoading={isPending} />
-              {isError && (
-                <div className="mt-4 p-4 bg-red-900/20 border border-red-800/40 rounded-xl text-red-400 text-sm">
-                  <strong>Error:</strong>{' '}
-                  {(error as any)?.response?.data?.detail ?? error?.message ?? 'Something went wrong'}
-                </div>
-              )}
             </div>
           )}
 

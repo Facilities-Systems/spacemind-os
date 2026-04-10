@@ -18,10 +18,18 @@ export function useDecompose() {
   })
 }
 
-export function useHistory(limit = 20, offset = 0) {
+export function useHistory(
+  limit = 20,
+  offset = 0,
+  requestType?: string,
+  locationId?: string,
+  priority?: string,
+  fromDate?: string,
+  toDate?: string,
+) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.history, limit, offset],
-    queryFn: () => api.getHistory(limit, offset),
+    queryKey: [...QUERY_KEYS.history, limit, offset, requestType, locationId, priority, fromDate, toDate],
+    queryFn: () => api.getHistory(limit, offset, requestType, locationId, priority, fromDate, toDate),
   })
 }
 

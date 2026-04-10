@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Toaster } from 'react-hot-toast'
 import { Layout } from './components/layout/Layout'
 import { DashboardPage } from './pages/DashboardPage'
 import { DecomposePage } from './pages/DecomposePage'
@@ -30,6 +31,19 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#171a23',
+            color: '#fff',
+            border: '1px solid #1f2535',
+            fontSize: '13px',
+          },
+          success: { iconTheme: { primary: '#34d399', secondary: '#052e16' } },
+          error: { iconTheme: { primary: '#f87171', secondary: '#3d0000' } },
+        }}
+      />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )

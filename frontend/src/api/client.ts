@@ -18,9 +18,25 @@ export const api = {
     return data
   },
 
-  getHistory: async (limit = 20, offset = 0): Promise<HistoryResponse> => {
+  getHistory: async (
+    limit = 20,
+    offset = 0,
+    request_type?: string,
+    location_id?: string,
+    priority?: string,
+    from_date?: string,
+    to_date?: string,
+  ): Promise<HistoryResponse> => {
     const { data } = await http.get<HistoryResponse>('/history', {
-      params: { limit, offset },
+      params: {
+        limit,
+        offset,
+        ...(request_type && { request_type }),
+        ...(location_id && { location_id }),
+        ...(priority && { priority }),
+        ...(from_date && { from_date }),
+        ...(to_date && { to_date }),
+      },
     })
     return data
   },

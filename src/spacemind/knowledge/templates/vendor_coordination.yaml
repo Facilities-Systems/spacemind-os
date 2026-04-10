@@ -1,0 +1,192 @@
+# SpaceMind OS — Vendor Coordination / Procurement Template
+# Applies to: engaging contractors, running tenders, managing SLAs,
+#             supplier onboarding, quotation processes, contract management
+
+type: vendor_coordination
+description: >
+  End-to-end vendor engagement and procurement process for facilities works.
+  Covers scoping, market engagement, tender, evaluation, appointment, mobilisation,
+  and ongoing SLA management. The quality of vendor selection determines 80%
+  of any facilities project outcome.
+
+phases:
+  - name: Scope Definition & Market Preparation
+    order: 1
+    description: >
+      You cannot get a meaningful quote without a meaningful brief.
+      Investing time here saves weeks of back-and-forth later.
+    tasks:
+      - name: Define detailed scope of works (SOW) document
+        responsible: facilities_manager
+        duration_hours: 8
+        notes: >
+          SOW must include: scope boundaries (what is IN and what is OUT),
+          deliverables, quality standards, access requirements, working hours,
+          health & safety requirements, insurance requirements.
+      - name: Identify whether works require approved/preferred supplier list
+        responsible: facilities_manager
+        duration_hours: 1
+        notes: Check internal procurement policy — some work categories have mandatory supplier lists
+      - name: Define evaluation criteria before going to market
+        responsible: facilities_manager
+        duration_hours: 2
+        notes: >
+          Typical: Price (40%), Technical capability (30%), Experience/references (20%),
+          H&S record (10%). Set these BEFORE seeing quotes to avoid bias.
+      - name: Confirm budget envelope and approval authority
+        responsible: facilities_manager
+        duration_hours: 2
+        risks:
+          - Starting a tender without budget approval wastes everyone's time
+      - name: Check compliance requirements — CIDB grading (SA), Construction Skills Certificate (UK)
+        responsible: legal
+        duration_hours: 4
+
+  - name: Market Engagement & Tender
+    order: 2
+    description: Go to market with a clear brief. Minimum 3 quotes for governance.
+    tasks:
+      - name: Identify and shortlist 3–5 suitable vendors
+        responsible: facilities_manager
+        duration_hours: 4
+        notes: >
+          For specialist works (gas, fire suppression, asbestos), only accredited
+          contractors qualify. Do not compromise on this.
+      - name: Issue Request for Quotation (RFQ) / Invitation to Tender (ITT)
+        responsible: facilities_manager
+        duration_hours: 4
+      - name: Conduct site visit with all tendering vendors (same day, same briefing)
+        responsible: facilities_manager
+        duration_hours: 4
+        notes: >
+          Same-day site visit ensures all vendors have identical information.
+          Prevents one vendor having an unfair advantage.
+      - name: Tender period — allow adequate time for responses
+        responsible: vendor
+        duration_hours: 80
+        notes: Minimum 10 working days for simple works; 15–20 days for complex projects
+      - name: Receive and log all quotations with date/time stamps
+        responsible: facilities_manager
+        duration_hours: 1
+
+  - name: Evaluation & Selection
+    order: 3
+    description: Evaluate fairly against pre-set criteria. Document the decision.
+    tasks:
+      - name: Conduct commercial evaluation — normalise quotes to like-for-like
+        responsible: facilities_manager
+        duration_hours: 4
+        notes: >
+          Cheapest quote is rarely best value. Check what each quote includes/excludes.
+          A low quote that excludes key items will exceed the highest quote once scoped correctly.
+      - name: Conduct technical evaluation — review methodology, programme, staffing
+        responsible: facilities_manager
+        duration_hours: 4
+      - name: Reference check — contact at least 2 previous clients
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Verify insurance certificates (Public Liability, Employer's Liability, Professional Indemnity)
+        responsible: legal
+        duration_hours: 2
+        risks:
+          - Uninsured contractor working on site — full liability falls on building owner/occupier
+      - name: Complete evaluation scorecard and document preferred vendor selection
+        responsible: facilities_manager
+        duration_hours: 2
+        notes: Document the decision — you will need this for audit purposes
+      - name: Obtain internal approval for preferred vendor and spend commitment
+        responsible: facilities_manager
+        duration_hours: 8
+
+  - name: Contract & Appointment
+    order: 4
+    description: >
+      Never start work on a handshake or verbal agreement.
+      A signed contract protects both parties.
+    tasks:
+      - name: Issue Letter of Award to preferred vendor
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Negotiate and agree contract terms (NEC3/4, JBCC, bespoke)
+        responsible: legal
+        duration_hours: 16
+        risks:
+          - Inadequate contract terms are the #1 cause of disputes and cost overruns
+      - name: Confirm programme of works and key milestones
+        responsible: vendor
+        duration_hours: 4
+      - name: Agree payment terms and milestone-linked invoice schedule
+        responsible: facilities_manager
+        duration_hours: 2
+        notes: Never pay 100% upfront — tie payments to delivery milestones
+      - name: Issue formal Purchase Order through financial system
+        responsible: internal
+        duration_hours: 1
+      - name: Confirm H&S induction requirements and site access procedure
+        responsible: facilities_manager
+        duration_hours: 2
+
+  - name: Mobilisation & Onsite Management
+    order: 5
+    description: Vendor on site — active supervision is not optional.
+    tasks:
+      - name: Pre-start meeting — review scope, programme, H&S, access, contacts
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Conduct H&S induction for all on-site personnel
+        responsible: facilities_manager
+        duration_hours: 2
+      - name: Verify contractor insurance and CIDB/accreditation documents on site
+        responsible: facilities_manager
+        duration_hours: 1
+      - name: Weekly progress meetings — review programme, issues, variations
+        responsible: facilities_manager
+        duration_hours: 2
+        notes: Weekly meetings prevent small problems becoming big ones
+      - name: Manage variations formally — no verbal instructions, written Variation Orders only
+        responsible: facilities_manager
+        duration_hours: 4
+        risks:
+          - Verbal scope changes without Variation Orders lead to disputed final accounts
+      - name: Monitor quality on site — do not wait for snagging to raise defects
+        responsible: facilities_manager
+        duration_hours: 8
+
+  - name: Completion & SLA Management
+    order: 6
+    description: Close out the contract and embed ongoing SLA governance.
+    tasks:
+      - name: Practical completion inspection — produce defects list
+        responsible: facilities_manager
+        duration_hours: 4
+      - name: Contractor clears all defects before final payment released
+        responsible: vendor
+        duration_hours: 16
+      - name: Final account agreement — reconcile all variations and extras
+        responsible: facilities_manager
+        duration_hours: 4
+        risks:
+          - Uncontrolled variations lead to final accounts significantly above contract sum
+      - name: Obtain all compliance certificates (gas, electrical, fire, etc.)
+        responsible: vendor
+        duration_hours: 2
+        notes: These are legal documents — file them permanently, not in the project folder
+      - name: Vendor performance review — score against evaluation criteria
+        responsible: facilities_manager
+        duration_hours: 2
+        notes: >
+          Update preferred supplier list based on performance.
+          A vendor who performed well should be fast-tracked next time.
+          A vendor who failed should be flagged or removed.
+      - name: Maintain SLA scorecard for ongoing contracted services
+        responsible: facilities_manager
+        duration_hours: 2
+
+typical_duration_days: 30
+key_risks:
+  - Going to market without a proper SOW produces incomparable quotes
+  - Selecting cheapest quote without like-for-like comparison — cost overruns guaranteed
+  - Starting work without signed contract or Purchase Order — no legal protection
+  - Uninsured contractor on site — full liability exposure
+  - Verbal scope changes without written Variation Orders — disputed final accounts
+  - No reference checks — engaging a vendor with poor delivery track record

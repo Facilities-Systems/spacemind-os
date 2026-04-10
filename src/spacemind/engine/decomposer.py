@@ -3,7 +3,8 @@ SpaceMind OS — Decomposer Engine
 Orchestrates: classify → load template → call AI → validate → apply rules
 """
 from spacemind.ai.client import AIClient
-from spacemind.core.constants import RequestType
+from spacemind.core.constants import RequestType, ResponsiblePartyType, RiskLevel
+from spacemind.core.exceptions import DecompositionError
 from spacemind.core.logging import log
 from spacemind.domain.schemas import (
     DecompositionRequest,
@@ -17,7 +18,6 @@ from spacemind.engine.classifier import RequestClassifier
 from spacemind.engine.validator import ResultValidator
 from spacemind.knowledge.base_templates import load_template, template_to_context_string
 from spacemind.knowledge.rules import apply_location_rules, get_location_context
-from spacemind.core.constants import ResponsiblePartyType, RiskLevel
 
 
 class Decomposer:
@@ -47,15 +47,21 @@ class Decomposer:
             notes=location_data.get("notes"),
         )
 
-        # 4. Call AI
-        raw = self._ai.decompose(
-            request_text=request.request_text,
-            template_context=template_context,
-            location_context=location_data,
-        )
+        # 4. Call AI — returns (parsed_dict, token_usage)
+        try:
+            raw, token_usage = self._ai.decompose(
+                request_text=request.request_text,
+                template_context=template_context,
+                location_context=location_data,
+            )
+        except Exception:
+            raise  # AIError / AIParseError already typed — let them propagate
 
         # 5. Parse into domain schema
-        result = self._parse_ai_output(raw, request, request_type, location_ctx)
+        try:
+            result = self._parse_ai_output(raw, request, request_type, location_ctx, token_usage)
+        except Exception as e:
+            raise DecompositionError(f"Failed to parse AI output into plan: {type(e).__name__}") from e
 
         # 6. Apply business rules
         result = apply_location_rules(result)
@@ -65,7 +71,8 @@ class Decomposer:
 
         log.info(
             f"[Decompose] Done — {len(result.phases)} phases, "
-            f"{result.total_tasks} tasks, ~{result.total_estimated_duration_days}d"
+            f"{result.total_tasks} tasks, ~{result.total_estimated_duration_days}d | "
+            f"tokens={token_usage.total_tokens}"
         )
         return result
 
@@ -75,6 +82,7 @@ class Decomposer:
         request: DecompositionRequest,
         request_type: RequestType,
         location_ctx: LocationContext,
+        token_usage,
     ) -> DecompositionResult:
         phases = []
         for i, phase_data in enumerate(raw.get("phases", [])):
@@ -126,4 +134,5 @@ class Decomposer:
             recommendations=raw.get("recommendations", []),
             landlord_items=raw.get("landlord_items", []),
             compliance_notes=raw.get("compliance_notes", []),
+            metadata={"token_usage": token_usage.to_dict()},
         )

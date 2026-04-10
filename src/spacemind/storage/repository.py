@@ -2,10 +2,13 @@
 SpaceMind OS — Repository
 All database reads/writes go through here. Never touch ORM models outside this file.
 """
+from datetime import datetime
 from typing import List, Optional
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from spacemind.core.exceptions import StorageError
 from spacemind.core.logging import log
 from spacemind.domain.models import DecompositionRecord
 from spacemind.domain.schemas import DecompositionResult, DecompositionSummary
@@ -28,28 +31,82 @@ class DecompositionRepository:
             total_estimated_days=result.total_estimated_duration_days,
             result_json=result.model_dump(mode="json"),
         )
-        self.db.add(record)
-        self.db.commit()
-        self.db.refresh(record)
-        log.info(f"Saved decomposition {record.id} ({record.request_type})")
-        return record
+        try:
+            self.db.add(record)
+            self.db.commit()
+            self.db.refresh(record)
+            log.info(f"Saved decomposition {record.id} ({record.request_type})")
+            return record
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            log.error(f"Failed to save decomposition {result.id}: {type(e).__name__}")
+            raise StorageError() from e
 
     def get_by_id(self, decomposition_id: str) -> Optional[DecompositionRecord]:
-        return self.db.query(DecompositionRecord).filter(
-            DecompositionRecord.id == decomposition_id
-        ).first()
+        try:
+            return self.db.query(DecompositionRecord).filter(
+                DecompositionRecord.id == decomposition_id
+            ).first()
+        except SQLAlchemyError as e:
+            log.error(f"DB error fetching {decomposition_id}: {type(e).__name__}")
+            raise StorageError() from e
 
-    def list_recent(self, limit: int = 20, offset: int = 0) -> List[DecompositionRecord]:
-        return (
-            self.db.query(DecompositionRecord)
-            .order_by(DecompositionRecord.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+    def list_filtered(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        request_type: str | None = None,
+        location_id: str | None = None,
+        priority: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> List[DecompositionRecord]:
+        try:
+            q = self.db.query(DecompositionRecord)
+            if request_type:
+                q = q.filter(DecompositionRecord.request_type == request_type)
+            if location_id:
+                q = q.filter(DecompositionRecord.location_id == location_id)
+            if priority:
+                q = q.filter(DecompositionRecord.priority == priority)
+            if from_date:
+                q = q.filter(DecompositionRecord.created_at >= datetime.fromisoformat(from_date))
+            if to_date:
+                q = q.filter(DecompositionRecord.created_at <= datetime.fromisoformat(to_date))
+            return (
+                q.order_by(DecompositionRecord.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
+        except SQLAlchemyError as e:
+            log.error(f"DB error listing records: {type(e).__name__}")
+            raise StorageError() from e
 
-    def count(self) -> int:
-        return self.db.query(DecompositionRecord).count()
+    def count_filtered(
+        self,
+        request_type: str | None = None,
+        location_id: str | None = None,
+        priority: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> int:
+        try:
+            q = self.db.query(DecompositionRecord)
+            if request_type:
+                q = q.filter(DecompositionRecord.request_type == request_type)
+            if location_id:
+                q = q.filter(DecompositionRecord.location_id == location_id)
+            if priority:
+                q = q.filter(DecompositionRecord.priority == priority)
+            if from_date:
+                q = q.filter(DecompositionRecord.created_at >= datetime.fromisoformat(from_date))
+            if to_date:
+                q = q.filter(DecompositionRecord.created_at <= datetime.fromisoformat(to_date))
+            return q.count()
+        except SQLAlchemyError as e:
+            log.error(f"DB error counting records: {type(e).__name__}")
+            raise StorageError() from e
 
     def to_summary(self, record: DecompositionRecord) -> DecompositionSummary:
         return DecompositionSummary(
