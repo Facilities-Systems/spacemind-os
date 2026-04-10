@@ -1,0 +1,118 @@
+# SpaceMind OS — Floor Renovation Template
+# Applies to: occupied floor being refreshed, partial or full
+# Key challenge: business continuity while works happen
+
+type: floor_renovation
+description: >
+  Renovation of an occupied or partially occupied floor.
+  Phased approach to maintain business continuity.
+  Same sequencing rule: Ceiling → Walls → Floor.
+
+phases:
+  - name: Feasibility & Business Continuity Planning
+    order: 1
+    tasks:
+      - name: Survey current floor condition — ceiling, walls, floor, M&E
+        responsible: facilities_manager
+        duration_hours: 8
+      - name: Agree phasing plan with business — work in zones to minimise disruption
+        responsible: facilities_manager
+        duration_hours: 8
+        notes: Phasing is the most important decision — get it right here
+      - name: Identify temporary relocation space for staff during works
+        responsible: hr
+        duration_hours: 4
+      - name: Landlord approval for works (scope-dependent)
+        responsible: legal
+        landlord_approval_required: true
+        duration_hours: 80
+      - name: Appoint contractor and agree out-of-hours working schedule
+        responsible: vendor
+        duration_hours: 16
+        notes: Renovation works in occupied buildings should be nights/weekends — budget accordingly
+
+  - name: Zone 1 Renovation (Repeat per zone)
+    order: 2
+    tasks:
+      - name: Temporarily relocate staff from Zone 1
+        responsible: hr
+        duration_hours: 4
+      - name: Protect adjacent occupied areas (dust barriers, noise mitigation)
+        responsible: contractor
+        duration_hours: 8
+      - name: Strip ceiling tiles — inspect and repair grid or replace
+        responsible: contractor
+        duration_hours: 16
+      - name: Replace/upgrade light fittings (LED where not already done)
+        responsible: electrician
+        duration_hours: 24
+      - name: Refresh HVAC diffusers and check balancing
+        responsible: vendor
+        duration_hours: 8
+      - name: Repair or replace partitions and doors
+        responsible: vendor
+        duration_hours: 24
+      - name: Full repaint (walls, columns, exposed services)
+        responsible: vendor
+        duration_hours: 32
+      - name: Replace carpet tiles / LVT
+        responsible: vendor
+        duration_hours: 24
+      - name: Deep clean and return staff
+        responsible: vendor
+        duration_hours: 8
+
+  - name: Common Areas Renovation
+    order: 3
+    tasks:
+      - name: Refresh reception / lobby area — finishes, signage, furniture
+        responsible: vendor
+        duration_hours: 40
+      - name: Refresh meeting rooms — AV upgrade, furniture, whiteboards
+        responsible: vendor
+        duration_hours: 32
+      - name: Refresh restrooms — tiles, fittings, accessories
+        responsible: plumber
+        duration_hours: 40
+        landlord_approval_required: true
+      - name: Refresh break / kitchen area
+        responsible: vendor
+        duration_hours: 24
+
+  - name: M&E Upgrades (if in scope)
+    order: 4
+    tasks:
+      - name: Replace aging switchboards / DB boards
+        responsible: electrician
+        duration_hours: 24
+        risks:
+          - Power outage required — schedule during off-hours
+      - name: HVAC maintenance and filter replacement
+        responsible: vendor
+        duration_hours: 16
+      - name: Upgrade data infrastructure to CAT6A
+        responsible: it_team
+        duration_hours: 48
+
+  - name: Final Snagging & Handover
+    order: 5
+    tasks:
+      - name: Full snagging walk — document all defects
+        responsible: facilities_manager
+        duration_hours: 6
+      - name: Contractor completes snags
+        responsible: contractor
+        duration_hours: 16
+      - name: Post-construction clean
+        responsible: vendor
+        duration_hours: 8
+      - name: Update floor plans and asset register
+        responsible: internal
+        duration_hours: 4
+
+typical_duration_days: 60
+key_risks:
+  - Business disruption if phasing is not meticulously planned
+  - Out-of-hours works carry premium labour costs — budget carefully
+  - Dust and noise complaints from adjacent tenants (rented buildings)
+  - Asbestos risk in older buildings — always survey before any demo

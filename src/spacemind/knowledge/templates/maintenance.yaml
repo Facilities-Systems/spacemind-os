@@ -1,0 +1,82 @@
+# SpaceMind OS — Reactive & Planned Maintenance Template
+# Applies to: HVAC, electrical faults, plumbing, general building maintenance
+
+type: maintenance
+description: >
+  Maintenance operations — both reactive (faults reported) and planned preventive maintenance.
+  Covers triage, vendor dispatch, resolution, and documentation.
+
+phases:
+  - name: Fault Triage & Classification
+    order: 1
+    tasks:
+      - name: Log fault with full details — location, symptom, time reported, reporter
+        responsible: facilities_manager
+        duration_hours: 0.5
+      - name: Classify urgency — P1 (critical) / P2 (urgent) / P3 (routine)
+        responsible: facilities_manager
+        duration_hours: 0.5
+        notes: |
+          P1: Life safety, complete system failure (no power, no aircon in server room, flood)
+          P2: Significant impact on operations (partial HVAC failure, partial power)
+          P3: Minor defect, cosmetic, non-urgent
+      - name: Check if under warranty or existing SLA
+        responsible: facilities_manager
+        duration_hours: 0.5
+
+  - name: Vendor Dispatch (Reactive)
+    order: 2
+    tasks:
+      - name: Contact SLA vendor (P1 = 2hr response, P2 = 4hr, P3 = 24hr)
+        responsible: facilities_manager
+        duration_hours: 0.5
+        risks:
+          - Vendor response outside SLA — escalate immediately
+      - name: Isolate hazard if life-safety risk (electrical, gas, water)
+        responsible: internal
+        duration_hours: 1
+        risks:
+          - CRITICAL: Never let non-qualified person work on live electrical
+      - name: Communicate fault status to affected staff
+        responsible: facilities_manager
+        duration_hours: 0.5
+      - name: Provide vendor with access (keys, building pass, escort if required)
+        responsible: internal
+        duration_hours: 1
+
+  - name: Fault Resolution
+    order: 3
+    tasks:
+      - name: Vendor diagnoses and resolves fault
+        responsible: vendor
+        duration_hours: 4
+      - name: Test resolution with relevant building system
+        responsible: facilities_manager
+        duration_hours: 1
+      - name: Confirm with affected staff that issue is resolved
+        responsible: facilities_manager
+        duration_hours: 0.5
+
+  - name: Documentation & Follow-Up
+    order: 4
+    tasks:
+      - name: Update maintenance log with root cause and resolution
+        responsible: facilities_manager
+        duration_hours: 1
+      - name: Raise purchase order for vendor invoice
+        responsible: internal
+        duration_hours: 1
+      - name: Assess if PPM (Planned Preventive Maintenance) schedule needs updating
+        responsible: facilities_manager
+        duration_hours: 1
+        notes: Recurring faults indicate PPM gap — fix the plan, not just the fault
+      - name: Escalate to capital budget if asset replacement required
+        responsible: facilities_manager
+        duration_hours: 2
+
+typical_duration_days: 3
+key_risks:
+  - P1 faults not escalated fast enough — business impact compounds
+  - Untrained staff attempting DIY repairs — safety and liability risk
+  - Vendor SLA not tracked — poor service goes unmanaged
+  - Reactive-only approach without PPM leads to increased major failures

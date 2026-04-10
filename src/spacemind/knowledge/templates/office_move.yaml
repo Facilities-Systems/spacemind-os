@@ -1,0 +1,148 @@
+# SpaceMind OS — Office Move Template
+# Based on 30+ years of corporate office relocations (SA, UK, Africa)
+# Applies to: moves of teams/departments from one space to another
+
+type: office_move
+description: >
+  Structured execution plan for relocating staff between offices.
+  Covers assessment, infrastructure readiness, IT migration, physical move, and post-move commissioning.
+
+phases:
+  - name: Assessment & Planning
+    order: 1
+    description: Understand the scope before a single box is moved.
+    tasks:
+      - name: Survey target space — capacity, layout, condition
+        responsible: internal
+        duration_hours: 4
+        risks:
+          - Insufficient power points for headcount
+          - No natural light compliance for workstations
+      - name: Confirm seating plan and departmental adjacencies
+        responsible: facilities_manager
+        duration_hours: 3
+        notes: Consult HR and line managers — do not assume seating
+      - name: Assess current space dilapidation obligations (if rented)
+        responsible: legal
+        landlord_approval_required: true
+        duration_hours: 8
+        risks:
+          - Lease exit clauses may require reinstatement of changes
+      - name: Define move scope — furniture, equipment, servers, plants
+        responsible: internal
+        duration_hours: 2
+      - name: Identify any staff with accessibility requirements
+        responsible: hr
+        duration_hours: 1
+
+  - name: Infrastructure Readiness
+    order: 2
+    description: Target space must be move-ready BEFORE people arrive.
+    tasks:
+      - name: Install additional power points / floor boxes
+        responsible: electrician
+        duration_hours: 16
+        landlord_approval_required: true   # Always in rented buildings
+        risks:
+          - Electrical load capacity may be exceeded
+      - name: Install data / network points (desk-level)
+        responsible: it_team
+        duration_hours: 24
+        risks:
+          - Inadequate switch capacity in comms room
+      - name: Configure Wi-Fi access points for new headcount density
+        responsible: it_team
+        duration_hours: 8
+      - name: Test HVAC and air distribution for new occupancy load
+        responsible: vendor
+        duration_hours: 4
+        risks:
+          - HVAC system undersized for increased occupancy
+      - name: Assess and adjust lighting levels (lux compliance)
+        responsible: electrician
+        duration_hours: 4
+      - name: Signage — directional, emergency exits, restrooms
+        responsible: internal
+        duration_hours: 4
+
+  - name: IT & Telephony Migration
+    order: 3
+    description: Parallel to infrastructure — must not block physical move day.
+    tasks:
+      - name: Map all telephone extensions to new locations
+        responsible: it_team
+        duration_hours: 4
+      - name: Migrate printers/MFDs — network reconfiguration
+        responsible: it_team
+        duration_hours: 8
+      - name: Update DHCP/DNS for new subnet if different floor/building
+        responsible: it_team
+        duration_hours: 4
+      - name: Test VoIP, video conferencing, screen sharing in new space
+        responsible: it_team
+        duration_hours: 2
+
+  - name: Pre-Move Communication
+    order: 4
+    description: Change management — people are not furniture.
+    tasks:
+      - name: Issue staff communication — move date, new seating plan, FAQs
+        responsible: hr
+        duration_hours: 2
+      - name: Arrange building access (parking, access cards, visitor registration)
+        responsible: internal
+        duration_hours: 4
+      - name: Coordinate move with security team — after-hours access if needed
+        responsible: facilities_manager
+        duration_hours: 2
+
+  - name: Physical Move Execution
+    order: 5
+    description: The actual move day — tightly orchestrated, not chaotic.
+    tasks:
+      - name: Engage professional relocation/moving company
+        responsible: vendor
+        duration_hours: 16
+        risks:
+          - Damage to equipment during transit
+          - Elevator/loading bay booking conflicts
+      - name: Label all assets with destination location codes
+        responsible: internal
+        duration_hours: 4
+      - name: Supervise IT equipment disconnection and reconnection
+        responsible: it_team
+        duration_hours: 8
+        risks:
+          - Data loss if servers not properly shut down
+      - name: Move furniture in correct sequence — workstations last
+        responsible: vendor
+        duration_hours: 8
+
+  - name: Post-Move Commissioning & Close-Out
+    order: 6
+    description: Ensure the new space is fully operational within 48h.
+    tasks:
+      - name: Walk-through punch list — report defects within 24h
+        responsible: facilities_manager
+        duration_hours: 3
+      - name: Confirm all staff have working workstations, phones, printing
+        responsible: it_team
+        duration_hours: 4
+      - name: Update floor plans and asset register
+        responsible: internal
+        duration_hours: 4
+      - name: Vacate old space — cleaning, dilapidation report
+        responsible: internal
+        duration_hours: 8
+        landlord_approval_required: true
+      - name: Return keys/access cards for vacated space
+        responsible: facilities_manager
+        duration_hours: 1
+
+typical_duration_days: 21
+key_risks:
+  - IT readiness is always the critical path — start IT workstream first
+  - Staff disruption if move day is poorly communicated
+  - Dilapidation surprises in rented buildings (document before and after)
+  - Headcount exceeding target space HVAC and power design limits
+  - Building management restrictions on after-hours or weekend access

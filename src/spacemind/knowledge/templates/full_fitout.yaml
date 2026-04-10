@@ -1,0 +1,248 @@
+# SpaceMind OS — Full Fit-Out Template
+# The queen of all facilities operations — complex, multi-trade, long-lead
+# CRITICAL RULE: Ceiling → Walls → Floor. Always. Non-negotiable.
+
+type: full_fitout
+description: >
+  Complete office fit-out from shell & core or stripped-back space.
+  Multi-trade coordination across M&E, civil, finishes, FF&E, and IT.
+  Sequence discipline is everything — ceiling first, then walls, then floor.
+
+phases:
+  - name: Scope Definition & Approvals
+    order: 1
+    description: Lock down the scope, get all sign-offs before trades mobilise.
+    tasks:
+      - name: Appoint principal contractor (or manage multiple trades directly)
+        responsible: vendor
+        duration_hours: 40
+        risks:
+          - Contractor without FM-specific experience will mis-sequence trades
+      - name: Produce detailed fit-out brief and layout plan
+        responsible: facilities_manager
+        duration_hours: 16
+      - name: Obtain landlord written approval for structural changes
+        responsible: legal
+        landlord_approval_required: true
+        duration_hours: 160    # Landlord approval can take 4+ weeks
+        risks:
+          - Landlord approval delayed — entire programme delayed
+          - Approval refused for demising walls or ceiling penetrations
+      - name: Submit building plan drawings to local council (if required)
+        responsible: vendor
+        landlord_approval_required: true
+        duration_hours: 80
+        risks:
+          - Planning or building regulations consent required before work starts
+      - name: Asbestos survey before any demolition works
+        responsible: vendor
+        duration_hours: 16
+        risks:
+          - CRITICAL: Asbestos found — full remediation required, major delay and cost
+      - name: Structural engineer sign-off for wall penetrations and loadings
+        responsible: vendor
+        duration_hours: 24
+      - name: Finalize M&E (Mechanical & Electrical) design drawings
+        responsible: vendor
+        duration_hours: 40
+
+  - name: Strip-Out & Demolition
+    order: 2
+    description: Clear the space before new work begins.
+    tasks:
+      - name: Disconnect and isolate all existing M&E services
+        responsible: electrician
+        duration_hours: 16
+        risks:
+          - Active services not properly isolated — electrocution risk
+      - name: Remove existing ceiling tiles and grid
+        responsible: contractor
+        duration_hours: 24
+        notes: Start from ceiling — this exposes services for rerouting
+      - name: Remove existing partitions and demountable walls
+        responsible: contractor
+        duration_hours: 32
+      - name: Remove existing flooring (carpet, tiles, raised access floor if any)
+        responsible: contractor
+        duration_hours: 24
+        notes: Floor is always last to come out — protects sub-floor during other works
+      - name: Skip/waste removal — schedule with building management
+        responsible: contractor
+        duration_hours: 8
+        landlord_approval_required: true
+
+  - name: Ceiling Works (FIRST — always)
+    order: 3
+    description: >
+      All overhead services MUST be complete and signed off before walls go up.
+      Rushing this phase creates rework that costs double later.
+    tasks:
+      - name: Install new ductwork and HVAC distribution
+        responsible: vendor
+        duration_hours: 80
+        risks:
+          - Duct routing conflicts with structural beams — requires redesign
+      - name: Install sprinkler heads and fire suppression modifications
+        responsible: vendor
+        duration_hours: 40
+        landlord_approval_required: true
+        risks:
+          - Fire suppression changes require building authority approval
+      - name: Install new electrical cable tray, conduit, and distribution
+        responsible: electrician
+        duration_hours: 60
+      - name: Install data cable infrastructure (CAT6A minimum)
+        responsible: it_team
+        duration_hours: 80
+        risks:
+          - Insufficient cable tray space — order tray early
+      - name: Install lighting cable and driver positions
+        responsible: electrician
+        duration_hours: 40
+      - name: Install new ceiling grid (Armstrong or specified system)
+        responsible: contractor
+        duration_hours: 32
+      - name: Fit ceiling tiles — leave sections open for M&E access
+        responsible: contractor
+        duration_hours: 24
+      - name: Install light fittings and emergency lighting
+        responsible: electrician
+        duration_hours: 32
+      - name: Ceiling M&E sign-off inspection
+        responsible: facilities_manager
+        duration_hours: 8
+        notes: Nothing proceeds to walls until ceiling is signed off
+
+  - name: Wall & Partition Works (SECOND)
+    order: 4
+    description: Frame, partition, and enclose spaces only after ceiling is done.
+    tasks:
+      - name: Install demountable partition systems (glass, solid)
+        responsible: vendor
+        duration_hours: 80
+        risks:
+          - Partition heads must connect properly to ceiling grid — coordinate with ceiling contractor
+      - name: Install new doors and frames
+        responsible: contractor
+        duration_hours: 24
+      - name: Plasterboard and skim finishing
+        responsible: contractor
+        duration_hours: 40
+      - name: Install power outlets, data outlets, light switches (wall-level)
+        responsible: electrician
+        duration_hours: 48
+      - name: First-fix plumbing (if breakout or kitchen area)
+        responsible: plumber
+        duration_hours: 24
+      - name: Painting — primer coats first
+        responsible: vendor
+        duration_hours: 40
+      - name: Final paint coats and touch-ups
+        responsible: vendor
+        duration_hours: 24
+      - name: Install wall signage, whiteboards, picture rails
+        responsible: internal
+        duration_hours: 16
+
+  - name: Floor Works (THIRD — always last)
+    order: 5
+    description: >
+      Floor goes in last to protect the finish during all other trades.
+      This is non-negotiable sequencing — floors laid early get destroyed.
+    tasks:
+      - name: Prepare and level concrete sub-floor
+        responsible: contractor
+        duration_hours: 24
+        risks:
+          - Uneven sub-floor causes carpet/tile failures within 6 months
+      - name: Install raised access floor (if specified)
+        responsible: vendor
+        duration_hours: 40
+      - name: Install carpet tiles or LVT (level vinyl tile)
+        responsible: vendor
+        duration_hours: 48
+        notes: Carpet tile allows future access for underfloor services — preferred over broadloom
+      - name: Install skirting boards and floor trims
+        responsible: contractor
+        duration_hours: 16
+      - name: Seal and protect floor until handover
+        responsible: vendor
+        duration_hours: 4
+
+  - name: FF&E Installation (Furniture, Fixtures & Equipment)
+    order: 6
+    description: Furniture comes in only after all trades are complete.
+    tasks:
+      - name: Procure and order furniture (lead time 8-12 weeks minimum)
+        responsible: facilities_manager
+        duration_hours: 16
+        risks:
+          - Furniture lead times are long — order while fit-out is in design phase
+      - name: Install workstations, storage, seating
+        responsible: vendor
+        duration_hours: 40
+      - name: Install kitchen equipment (fridge, microwave, coffee machine)
+        responsible: internal
+        duration_hours: 8
+      - name: Hang artwork, install plants and biophilic elements
+        responsible: internal
+        duration_hours: 8
+
+  - name: IT & AV Commissioning
+    order: 7
+    description: Technology must be tested before staff arrive.
+    tasks:
+      - name: Terminate and test all data points (patch panels to desks)
+        responsible: it_team
+        duration_hours: 40
+      - name: Install and configure Wi-Fi access points
+        responsible: it_team
+        duration_hours: 16
+      - name: Commission AV systems (screens, video conferencing, projectors)
+        responsible: vendor
+        duration_hours: 24
+      - name: Configure telephone system and extensions
+        responsible: it_team
+        duration_hours: 8
+      - name: Full IT systems test — every workpoint
+        responsible: it_team
+        duration_hours: 16
+        risks:
+          - Dead data points discovered late cause move delays
+
+  - name: Snagging & Handover
+    order: 8
+    description: Quality gate before occupation.
+    tasks:
+      - name: Snagging walkthrough — produce defect list
+        responsible: facilities_manager
+        duration_hours: 8
+      - name: Contractor completes all snags
+        responsible: contractor
+        duration_hours: 24
+      - name: Final deep clean (post-construction)
+        responsible: vendor
+        duration_hours: 16
+        notes: Construction clean is different from office clean — specify properly
+      - name: Practical Completion certificate issued
+        responsible: facilities_manager
+        duration_hours: 4
+        landlord_approval_required: true
+      - name: As-built drawings issued by contractor
+        responsible: vendor
+        duration_hours: 16
+      - name: O&M (Operations & Maintenance) manuals received
+        responsible: vendor
+        duration_hours: 4
+      - name: Staff orientation walkthrough
+        responsible: facilities_manager
+        duration_hours: 4
+
+typical_duration_days: 90
+key_risks:
+  - Landlord approval delays are the #1 programme risk — submit early
+  - Asbestos is always a risk in pre-1990 buildings — survey before demo
+  - M&E design changes mid-programme cost 3x more than at design stage
+  - Furniture lead times of 8-12 weeks must be ordered at contract award
+  - Construction dust and noise affects adjacent occupied floors
+  - Defects discovered after occupation are expensive — invest in proper snagging

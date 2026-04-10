@@ -1,0 +1,139 @@
+# SpaceMind OS — Canteen / Staff Kitchen Setup Template
+# Applies to: new canteen, kitchen refresh, coffee bar, breakout catering areas
+
+type: canteen_setup
+description: >
+  Setting up or refurbishing a staff canteen, cafeteria, or kitchen area.
+  Involves food safety compliance, plumbing, extraction, gas (if applicable), and catering equipment.
+
+phases:
+  - name: Compliance & Design
+    order: 1
+    tasks:
+      - name: Engage food safety consultant — HACCP compliance design
+        responsible: vendor
+        duration_hours: 16
+        risks:
+          - Non-compliant layout fails health inspection — costly rework
+        notes: HACCP (Hazard Analysis Critical Control Points) is non-negotiable for any food prep area
+      - name: Engage mechanical engineer for extraction/ventilation design
+        responsible: vendor
+        duration_hours: 24
+        notes: Extraction must handle cooking fumes — undersized = non-compliance + odour complaints
+      - name: Landlord approval for extraction duct penetrations
+        responsible: legal
+        landlord_approval_required: true
+        duration_hours: 80
+        risks:
+          - Landlord may restrict roof/external wall penetrations for extraction
+      - name: Obtain local authority food premises registration
+        responsible: facilities_manager
+        duration_hours: 16
+        notes: Required before food is served — apply early, processing takes time
+      - name: Gas installation design (if cooking with gas)
+        responsible: vendor
+        landlord_approval_required: true
+        duration_hours: 16
+        risks:
+          - Gas supply may not exist in building — LPG alternative may be needed
+
+  - name: Structural & M&E Works
+    order: 2
+    tasks:
+      - name: Install extraction canopy and ductwork (ceiling first)
+        responsible: vendor
+        duration_hours: 40
+      - name: Install gas supply pipework and meter (if applicable)
+        responsible: vendor
+        landlord_approval_required: true
+        duration_hours: 24
+        risks:
+          - Gas compliance certificate required — no shortcuts
+      - name: Install plumbing — hot/cold water, waste, grease trap
+        responsible: plumber
+        duration_hours: 32
+        notes: Grease trap is mandatory — prevents drain blockages
+      - name: Install 3-phase electrical supply for commercial equipment
+        responsible: electrician
+        duration_hours: 24
+        risks:
+          - Standard office electrical supply is insufficient for commercial catering — major upgrade may be required
+      - name: Install floor drainage (commercial kitchens require floor drains)
+        responsible: plumber
+        duration_hours: 16
+      - name: Install food-safe wall cladding (stainless steel or hygienic PVC)
+        responsible: vendor
+        duration_hours: 24
+      - name: Install anti-slip flooring (food-safe, easy-clean)
+        responsible: vendor
+        duration_hours: 16
+        notes: Epoxy resin or quarry tile preferred — carpet/LVT not suitable for kitchen areas
+
+  - name: Equipment Installation
+    order: 3
+    tasks:
+      - name: Procure commercial catering equipment (lead time 6-10 weeks)
+        responsible: facilities_manager
+        duration_hours: 8
+        risks:
+          - Long lead times — order at design sign-off stage
+      - name: Install and commission commercial fridges and cold rooms
+        responsible: vendor
+        duration_hours: 16
+      - name: Install cooking equipment (ovens, hobs, griddles)
+        responsible: vendor
+        duration_hours: 16
+      - name: Install dishwasher and pot wash station
+        responsible: vendor
+        duration_hours: 8
+      - name: Install coffee machine / barista equipment
+        responsible: vendor
+        duration_hours: 8
+      - name: Install servery counters and hot/cold display units
+        responsible: vendor
+        duration_hours: 16
+
+  - name: Dining Area Setup
+    order: 4
+    tasks:
+      - name: Install dining furniture (tables, chairs, high stools)
+        responsible: internal
+        duration_hours: 8
+      - name: Install power for laptop charging at dining tables
+        responsible: electrician
+        duration_hours: 8
+      - name: Install digital menu board / communications screens
+        responsible: it_team
+        duration_hours: 8
+      - name: Biophilic elements — plants, artwork, acoustic panels
+        responsible: internal
+        duration_hours: 4
+
+  - name: Commissioning & Inspections
+    order: 5
+    tasks:
+      - name: Gas safety inspection and certification
+        responsible: vendor
+        duration_hours: 8
+        risks:
+          - Failed gas inspection stops all cooking — fix before opening day
+      - name: Local authority food premises inspection
+        responsible: facilities_manager
+        duration_hours: 8
+      - name: Fire suppression system for kitchen tested and certified
+        responsible: vendor
+        duration_hours: 8
+      - name: Staff food hygiene training (minimum Level 2)
+        responsible: hr
+        duration_hours: 16
+      - name: Soft opening — staff trial before full service
+        responsible: facilities_manager
+        duration_hours: 8
+
+typical_duration_days: 45
+key_risks:
+  - Extraction design is the most common failure point — get it right in design
+  - Grease trap omission causes plumbing failures within months
+  - Food premises registration takes time — apply before works complete
+  - Commercial power requirements are often severely underestimated
+  - Gas compliance is non-negotiable — never open without certificate
