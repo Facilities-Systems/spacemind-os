@@ -11,7 +11,8 @@ export const QUERY_KEYS = {
 export function useDecompose() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (req: DecompositionRequest) => api.decompose(req),
+    mutationFn: ({ req, multiAgent }: { req: DecompositionRequest; multiAgent?: boolean }) =>
+      api.decompose(req, multiAgent),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.history })
     },

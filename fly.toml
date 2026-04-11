@@ -1,0 +1,65 @@
+# SpaceMind OS — Fly.io deployment configuration
+# Deploy: flyctl deploy
+# Docs:   https://fly.io/docs/reference/configuration/
+
+app = "spacemind-os-api"
+primary_region = "jnb"   # Johannesburg — closest to South Africa HQ
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_ENV = "production"
+  APP_PORT = "8000"
+  APP_DEBUG = "false"
+  PROMETHEUS_ENABLED = "false"   # Fly has built-in metrics
+
+# Secrets — set via: flyctl secrets set KEY=value
+# Required:
+#   ANTHROPIC_API_KEY
+#   SECRET_KEY
+#   DATABASE_URL
+#   SENTRY_DSN (optional)
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8000
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 200
+    soft_limit = 150
+
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "get"
+    path = "/api/v1/health"
+    protocol = "http"
+    tls_skip_verify = false
+
+[[mounts]]
+  source = "spacemind_data"
+  destination = "/app/data"
+
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

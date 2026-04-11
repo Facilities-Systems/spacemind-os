@@ -2,10 +2,50 @@ import { useState } from 'react'
 import { AlertTriangle, ChevronDown, Clock, Lock } from 'lucide-react'
 import { clsx } from 'clsx'
 import { RiskBadge, ResponsibleBadge } from '../ui/Badge'
-import type { TaskItem } from '../../types'
+import type { PhaseStatus, TaskItem } from '../../types'
+import { api } from '../../api/client'
+import toast from 'react-hot-toast'
 
-export function TaskRow({ task, index }: { task: TaskItem; index: number }) {
+const STATUS_STYLES: Record<PhaseStatus, string> = {
+  pending:     'bg-gray-700/40 text-gray-400 border-gray-600/30',
+  in_progress: 'bg-brand-700/40 text-brand-300 border-brand-600/40',
+  completed:   'bg-emerald-800/40 text-emerald-300 border-emerald-700/40',
+  blocked:     'bg-red-900/40 text-red-300 border-red-800/40',
+}
+
+const STATUS_LABELS: Record<PhaseStatus, string> = {
+  pending:     'Pending',
+  in_progress: 'In Progress',
+  completed:   'Completed',
+  blocked:     'Blocked',
+}
+
+interface TaskRowProps {
+  task: TaskItem
+  index: number
+  decompositionId?: string
+  onStatusChange?: (taskId: string, status: PhaseStatus) => void
+}
+
+export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRowProps) {
   const [open, setOpen] = useState(false)
+  const [status, setStatus] = useState<PhaseStatus>(task.status)
+  const [updating, setUpdating] = useState(false)
+
+  const handleStatusChange = async (newStatus: PhaseStatus) => {
+    if (!decompositionId || newStatus === status) return
+    setUpdating(true)
+    try {
+      await api.updateTaskStatus(decompositionId, task.id, newStatus)
+      setStatus(newStatus)
+      onStatusChange?.(task.id, newStatus)
+      toast.success(`Task marked as ${STATUS_LABELS[newStatus]}`)
+    } catch {
+      toast.error('Failed to update task status')
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   return (
     <div className="border border-surface-border rounded-lg overflow-hidden bg-surface">
@@ -21,10 +61,12 @@ export function TaskRow({ task, index }: { task: TaskItem; index: number }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white">{task.name}</span>
+            <span className={clsx('text-sm font-medium', status === 'completed' ? 'text-gray-500 line-through' : 'text-white')}>
+              {task.name}
+            </span>
             {task.landlord_approval_required && (
               <span className="inline-flex items-center gap-1 text-xs text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded px-1.5 py-0.5">
-                <Lock className="h-2.5 w-2.5" /> Landlord Approval
+                <Lock className="h-2.5 w-2.5" /> Landlord
               </span>
             )}
           </div>
@@ -40,6 +82,11 @@ export function TaskRow({ task, index }: { task: TaskItem; index: number }) {
           </div>
         </div>
 
+        {/* Status badge */}
+        <span className={clsx('shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium', STATUS_STYLES[status])}>
+          {STATUS_LABELS[status]}
+        </span>
+
         <ChevronDown className={clsx('h-4 w-4 text-gray-500 shrink-0 mt-0.5 transition-transform', open && 'rotate-180')} />
       </button>
 
@@ -51,6 +98,32 @@ export function TaskRow({ task, index }: { task: TaskItem; index: number }) {
           {task.responsible.notes && (
             <p className="text-xs text-gray-500 italic">{task.responsible.notes}</p>
           )}
+
+          {/* Status selector */}
+          {decompositionId && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Update Status</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(STATUS_LABELS) as PhaseStatus[]).map((s) => (
+                  <button
+                    key={s}
+                    disabled={updating || s === status}
+                    onClick={(e) => { e.stopPropagation(); handleStatusChange(s) }}
+                    className={clsx(
+                      'text-xs px-2.5 py-1 rounded-full border font-medium transition-all',
+                      s === status
+                        ? STATUS_STYLES[s] + ' opacity-100'
+                        : 'bg-surface border-surface-border text-gray-500 hover:text-white hover:border-brand-700/40',
+                      updating && 'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    {STATUS_LABELS[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {task.risks.length > 0 && (
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Risks</p>

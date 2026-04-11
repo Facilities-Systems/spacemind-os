@@ -1,0 +1,115 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # Never cancel a running deploy
+
+jobs:
+  # ─── Build & push images ───────────────────────────────────────────────────
+  build:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      api_image: ${{ steps.meta-api.outputs.tags }}
+      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── API image ──────────────────────────────────────────────────────────
+      - name: Docker meta — API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/api
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+
+      # ── Frontend image ────────────────────────────────────────────────────
+      - name: Docker meta — Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/frontend
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build & push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── Deploy to Fly.io ─────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Fly.io
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run Alembic migrations
+        run: flyctl ssh console -a spacemind-os-api --command "alembic upgrade head"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy API to Fly.io
+        run: flyctl deploy --remote-only --image ghcr.io/${{ github.repository }}/api:latest
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Verify deployment health
+        run: |
+          sleep 10
+          STATUS=$(curl -sf https://spacemind-os-api.fly.dev/api/v1/health | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+          echo "Health: $STATUS"
+          [ "$STATUS" = "operational" ] || exit 1
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

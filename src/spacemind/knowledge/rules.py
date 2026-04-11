@@ -3,7 +3,7 @@ SpaceMind OS — Business Rules Engine
 Encodes FM domain rules that are always true, regardless of AI output.
 These rules are applied as a post-processing layer over AI results.
 """
-from spacemind.core.constants import KNOWN_LOCATIONS, TenureType
+from spacemind.core.constants import KNOWN_LOCATIONS, RequestType, TenureType
 from spacemind.core.logging import log
 from spacemind.domain.schemas import DecompositionResult, TaskItem
 
@@ -33,7 +33,7 @@ def get_location_context(location_id: str) -> dict:
 
 def apply_location_rules(result: DecompositionResult) -> DecompositionResult:
     """
-    Apply mandatory business rules based on location tenure.
+    Apply mandatory business rules based on location tenure and country compliance.
     Rules override AI output where needed.
     """
     tenure = result.location_context.tenure
@@ -43,6 +43,7 @@ def apply_location_rules(result: DecompositionResult) -> DecompositionResult:
         _flag_landlord_tasks(result)
 
     _enforce_fitout_sequencing(result)
+    _inject_compliance_notes(result)
     return result
 
 
@@ -63,12 +64,35 @@ def _flag_landlord_tasks(result: DecompositionResult) -> None:
                 task.landlord_approval_required = True
 
 
+def _inject_compliance_notes(result: DecompositionResult) -> None:
+    """
+    Inject country-specific regulatory compliance notes from the compliance engine.
+    Merges with any notes already returned by the AI (deduplication by text prefix).
+    """
+    from spacemind.knowledge.compliance import get_compliance_notes
+    try:
+        country = result.location_context.country
+        request_type = result.request_type
+        tenure = result.location_context.tenure
+
+        new_notes = get_compliance_notes(country, request_type, tenure)
+        existing = {n[:60] for n in result.compliance_notes}
+
+        for note in new_notes:
+            if note[:60] not in existing:
+                result.compliance_notes.append(note)
+
+        if new_notes:
+            log.debug(f"[Compliance] Injected {len(new_notes)} notes for {country}/{request_type.value}")
+    except Exception as e:
+        log.warning(f"[Compliance] Rules injection failed: {e}")
+
+
 def _enforce_fitout_sequencing(result: DecompositionResult) -> None:
     """
     Validate that fit-out / renovation plans follow Ceiling → Walls → Floor order.
     Log a warning if the AI returned an incorrect sequence.
     """
-    from spacemind.core.constants import RequestType
     if result.request_type not in (RequestType.FULL_FITOUT, RequestType.FLOOR_RENOVATION):
         return
 

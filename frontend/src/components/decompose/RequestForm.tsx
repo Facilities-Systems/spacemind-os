@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { BrainCircuit, ChevronDown, Send } from 'lucide-react'
+import { ArrowLeft, BrainCircuit, ChevronDown, Send, Zap } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useLocations } from '../../hooks/useDecompose'
 import type { DecompositionRequest, Priority } from '../../types'
+import type { OperationType } from './CatalogSelector'
 
 const schema = z.object({
   request_text: z
@@ -29,12 +30,15 @@ const EXAMPLES = [
 ]
 
 interface RequestFormProps {
-  onSubmit: (req: DecompositionRequest) => void
+  onSubmit: (req: DecompositionRequest, useMultiAgent: boolean) => void
   isLoading: boolean
+  selectedOp?: OperationType
+  onChangeType?: () => void
 }
 
-export function RequestForm({ onSubmit, isLoading }: RequestFormProps) {
+export function RequestForm({ onSubmit, isLoading, selectedOp, onChangeType }: RequestFormProps) {
   const { data: locations = [] } = useLocations()
+  const [useMultiAgent, setUseMultiAgent] = useState(false)
 
   const {
     register,
@@ -56,17 +60,46 @@ export function RequestForm({ onSubmit, isLoading }: RequestFormProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const handleFormSubmit = (values: FormValues) => {
+    // Prepend operation type hint so the AI gets better context
+    const typeHint =
+      selectedOp && selectedOp.type !== 'unknown'
+        ? `[Operation type: ${selectedOp.label} — ${selectedOp.duration}, ${selectedOp.phases} phases]\n\n`
+        : ''
     onSubmit({
       request_text: values.request_text,
       location_id: values.location_id,
       priority: values.priority,
       requester_name: values.requester_name || undefined,
-      additional_context: values.additional_context || undefined,
-    })
+      additional_context: typeHint + (values.additional_context || ''),
+    }, useMultiAgent)
   }
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-5">
+      {/* Operation type pill — shown when a type was selected from the catalog */}
+      {selectedOp && selectedOp.type !== 'unknown' && (
+        <div className="flex items-center justify-between bg-surface-card border border-surface-border rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <selectedOp.icon className={`h-4 w-4 ${selectedOp.accent}`} />
+            <span className="text-white text-sm font-semibold">{selectedOp.label}</span>
+            <span className="text-gray-600 text-xs">·</span>
+            <span className={`text-xs font-semibold ${selectedOp.accent}`}>{selectedOp.duration}</span>
+            <span className="text-gray-600 text-xs">·</span>
+            <span className="text-gray-500 text-xs">{selectedOp.phases} phases</span>
+          </div>
+          {onChangeType && (
+            <button
+              type="button"
+              onClick={onChangeType}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-brand-400 transition-all"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Change type
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Main request input */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -191,16 +224,49 @@ export function RequestForm({ onSubmit, isLoading }: RequestFormProps) {
         </div>
       )}
 
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2.5 bg-brand-600 hover:bg-brand-500 disabled:bg-surface-muted disabled:text-gray-600 text-white font-semibold py-3 rounded-xl transition-all text-sm"
-      >
-        <BrainCircuit className="h-4 w-4" />
-        {isLoading ? 'Generating Plan...' : 'Generate Execution Plan'}
-        {!isLoading && <Send className="h-3.5 w-3.5" />}
-      </button>
+      {/* Multi-agent toggle + submit */}
+      <div className="space-y-3">
+        {/* Deep Analysis toggle */}
+        <button
+          type="button"
+          onClick={() => setUseMultiAgent(v => !v)}
+          className={clsx(
+            'w-full flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm font-medium transition-all',
+            useMultiAgent
+              ? 'bg-purple-900/30 border-purple-700/50 text-purple-300'
+              : 'bg-surface-muted border-surface-border text-gray-400 hover:text-white hover:border-brand-700/40',
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Zap className={clsx('h-4 w-4', useMultiAgent ? 'text-purple-400' : 'text-gray-500')} />
+            <span>Deep Analysis Mode</span>
+            {useMultiAgent && (
+              <span className="text-xs bg-purple-700/40 text-purple-300 px-2 py-0.5 rounded-full">ON</span>
+            )}
+          </div>
+          <span className="text-xs text-gray-500">
+            {useMultiAgent ? '5 specialist AI agents · ~2× richer · ~2× slower' : '1 AI agent · fast'}
+          </span>
+        </button>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className={clsx(
+            'w-full flex items-center justify-center gap-2.5 font-semibold py-3 rounded-xl transition-all text-sm disabled:bg-surface-muted disabled:text-gray-600',
+            useMultiAgent
+              ? 'bg-purple-700 hover:bg-purple-600 text-white'
+              : 'bg-brand-600 hover:bg-brand-500 text-white',
+          )}
+        >
+          {useMultiAgent ? <Zap className="h-4 w-4" /> : <BrainCircuit className="h-4 w-4" />}
+          {isLoading
+            ? (useMultiAgent ? 'Running 5 Agents...' : 'Generating Plan...')
+            : (useMultiAgent ? 'Deep Analysis' : 'Generate Execution Plan')
+          }
+          {!isLoading && <Send className="h-3.5 w-3.5" />}
+        </button>
+      </div>
     </form>
   )
 }

@@ -6,8 +6,9 @@ uvicorn[standard]>=0.29.0
 anthropic>=0.28.0
 
 # Validation & Settings
-pydantic>=2.7.0
+pydantic[email]>=2.7.0
 pydantic-settings>=2.2.0
+email-validator>=2.1.0
 
 # Database
 sqlalchemy>=2.0.0
@@ -29,6 +30,25 @@ rich>=13.7.0
 tenacity>=8.3.0          # Retry logic
 python-ulid>=2.2.0       # Better IDs
 slowapi>=0.1.9            # Rate limiting
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1
+
+# Export
+reportlab>=4.2.0
+
+# Phase 2 — Multi-Agent / Vector Memory
+chromadb>=0.5.0           # Vector memory store (optional — enable_vector_memory=true)
+
+# Phase 3 — Observability
+prometheus-fastapi-instrumentator>=6.1.0
+sentry-sdk[fastapi]>=2.0.0
+
+# Phase 4 — Excel export (UFM pattern)
+pandas>=2.2.0
+openpyxl>=3.1.0
 
 # Dev
 pytest>=8.2.0

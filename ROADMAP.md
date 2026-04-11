@@ -96,88 +96,92 @@ This roadmap tracks the sequenced path from MVP to world-class, production-grade
 
 ## Phase 1.2 — Auth, UX Polish & Export
 
-- 🔲 **14. Authentication — Backend**
+- ✅ **14. Authentication — Backend**
   - JWT auth with `python-jose` + `passlib`
   - `POST /auth/login` → access token
   - Protect all `/api/v1/` routes with `Depends(get_current_user)`
   - Files: `src/spacemind/api/auth.py`, `src/spacemind/domain/models.py` (User model), `src/spacemind/storage/repository.py`
 
-- 🔲 **15. Authentication — Frontend**
-  - `LoginPage` (email + password)
-  - `AuthContext` with JWT token (httpOnly cookie preferred)
-  - `ProtectedRoute` wrapper; user identity in `Header.tsx` (replace hardcoded "FM")
+- ✅ **15. Authentication — Frontend**
+  - `LoginPage` (email + password + register tab)
+  - `AuthContext` with JWT token (localStorage), auto-logout on 401
+  - `ProtectedRoute` wrapper; user identity in `Header.tsx` (initials, name, role, logout)
   - Files: `frontend/src/pages/LoginPage.tsx`, `frontend/src/context/AuthContext.tsx`, `frontend/src/api/client.ts`
 
-- 🔲 **16. PDF / Export**
+- ✅ **16. PDF / Export**
   - Backend: `GET /api/v1/history/{id}/export?format=pdf|json|markdown`
-  - Use `weasyprint` for PDF generation
-  - Frontend: Export button in `ResultView.tsx`
+  - PDF via `reportlab` (multi-table, risk colours, branded layout)
+  - Frontend: Export dropdown in `ResultView.tsx` (PDF / JSON / Markdown)
   - Files: `src/spacemind/api/routes.py`, `src/spacemind/services/export_service.py`
 
-- 🔲 **17. Gantt Chart / Timeline visualization**
-  - "Timeline" tab in `ResultView` — visual Gantt derived from `estimated_duration_hours` and dependencies
-  - File: `frontend/src/components/decompose/GanttView.tsx`, `frontend/src/components/decompose/ResultView.tsx`
+- ✅ **17. Gantt Chart / Timeline visualization**
+  - "Timeline" tab in `ResultView` — visual Gantt from `estimated_duration_hours`, task micro-bars by risk colour, detail table below
+  - File: `frontend/src/components/decompose/GanttChart.tsx`, `frontend/src/components/decompose/ResultView.tsx`
 
-- 🔲 **18. Task Status Tracking**
-  - Backend: `PATCH /api/v1/history/{id}/tasks/{task_id}` → update task status
-  - Frontend: Status toggle buttons on `TaskRow.tsx`
+- ✅ **18. Task Status Tracking**
+  - Backend: `PATCH /api/v1/history/{id}/tasks/{task_id}` → update task status in stored JSON
+  - Frontend: Status toggle buttons on `TaskRow.tsx` (Pending / In Progress / Completed / Blocked)
   - Files: `src/spacemind/api/routes.py`, `src/spacemind/storage/repository.py`, `frontend/src/components/decompose/TaskRow.tsx`
 
-- 🔲 **19. Mobile Responsive Design**
-  - Sidebar collapses to hamburger on `< md` breakpoint, slide-out drawer
-  - Stack form fields and cards on small screens
+- ✅ **19. Mobile Responsive Design**
+  - Sidebar collapses to hamburger on `< md` breakpoint, overlay slide-out drawer
+  - Mobile top bar with hamburger + logo; paddings stack on small screens
   - Files: `frontend/src/components/layout/Sidebar.tsx`, `frontend/src/components/layout/Layout.tsx`
 
-- 🔲 **20. Analytics Dashboard**
-  - Requests by type (pie), average duration by type, requests over time (line)
-  - Backend: `GET /api/v1/analytics`
-  - Use `recharts` for charts
-  - Files: `frontend/src/pages/DashboardPage.tsx`, `src/spacemind/api/routes.py`
+- ✅ **20. Analytics Dashboard**
+  - Requests by type + priority bar charts (`recharts`)
+  - Backend: `GET /api/v1/analytics` — totals, by_type, by_priority, avg_tasks, avg_days
+  - Files: `frontend/src/pages/DashboardPage.tsx`, `src/spacemind/api/routes.py`, `src/spacemind/storage/repository.py`
 
 ---
 
 ## Phase 2 — Multi-Agent Intelligence
 
-- 🔲 **21. CrewAI multi-agent orchestration**
-  - Implement `src/spacemind/engine/planner.py` (currently a stub)
-  - Supervisor Agent → Operations Planner + Technical Specialist + Context + Vendor Coordinator → Synthesizer
-  - Install: `crewai`, `chromadb`, `langchain-community`
+- ✅ **21. Multi-agent orchestration** (native Anthropic SDK, no CrewAI dependency)
+  - Supervisor (Haiku) → [Operations Planner + Technical Specialist + Vendor Coordinator] parallel (ThreadPoolExecutor) → Synthesizer
+  - 5 specialist prompts in `prompts.py`, 5 agent classes in `src/spacemind/ai/agents/`
+  - `POST /api/v1/orchestrate` endpoint — rate-limited, auth-protected
+  - Frontend: Deep Analysis Mode toggle in RequestForm — purple UI, 5-agent loading state
   - Files: `src/spacemind/engine/planner.py`, `src/spacemind/services/orchestration_service.py`, `src/spacemind/ai/agents/`
 
-- 🔲 **22. Vector memory store**
-  - Enable `enable_vector_memory=true` feature flag (currently stubbed)
-  - Embed past decompositions into ChromaDB on save; retrieve semantically similar cases for AI context
-  - Files: `src/spacemind/storage/vector_store.py`, `src/spacemind/ai/client.py`
+- ✅ **22. Vector memory store**
+  - ChromaDB persistent store at `./data/chromadb/`
+  - Lazy singleton — only initialised when `ENABLE_VECTOR_MEMORY=true`
+  - Upsert embeddings on every save; query top-3 similar cases injected into AI context
+  - Files: `src/spacemind/storage/vector_store.py`
 
-- 🔲 **23. Country compliance rules engine**
-  - Expand `rules.py` from keyword flagging to structured country-specific rules
-  - SA: OHS Act, SANS 10142. UK: Building Regs Part B, CDM 2015. Kenya: NEMA, KEBS
-  - Files: `src/spacemind/knowledge/rules.py`, `src/spacemind/core/constants.py`
+- ✅ **23. Country compliance rules engine**
+  - Structured `ComplianceRule` dataclass with `applies_to` + `tenure_required` filtering
+  - Countries: South Africa (OHS Act, SANS 10142, NBR, COIDA, B-BBEE), UK (CDM 2015, Part B, BS 7671, Asbestos Regs), Kenya (NEMA, NCA, KEBS), Nigeria (LASPPPA, LAWMA, COREN)
+  - Auto-injected into `compliance_notes` after every decomposition via `_inject_compliance_notes()`
+  - Files: `src/spacemind/knowledge/compliance.py`, `src/spacemind/knowledge/rules.py`
 
 ---
 
 ## Phase 3 — Production Deployment
 
-- 🔲 **24. CI/CD Pipeline**
-  - `.github/workflows/ci.yml`: `pytest`, `eslint`, `tsc --noEmit` on every PR
-  - `.github/workflows/deploy.yml`: build Docker images, push, deploy on merge to `main`
+- ✅ **24. CI/CD Pipeline**
+  - `.github/workflows/ci.yml`: pytest + tsc --noEmit + eslint + Docker build check on every PR
+  - `.github/workflows/deploy.yml`: build + push to GHCR, Alembic migrate, Fly.io deploy + health check on merge to main
   - Files: `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`
 
-- 🔲 **25. Production Docker hardening**
-  - Multi-stage Dockerfile (builder → slim runtime), non-root user, health checks
-  - Separate `docker-compose.prod.yml`
-  - Files: `Dockerfile`, `docker-compose.prod.yml`
+- ✅ **25. Production Docker hardening**
+  - Multi-stage `Dockerfile` (builder → python:3.11-slim runtime, non-root uid=1001, curl health check)
+  - `docker-compose.prod.yml`: replicas=2, rolling update, health checks, resource limits, migration job, Prometheus
+  - Hardened `nginx.conf`: gzip, security headers (X-Frame-Options, HSTS, CSP), 180s AI proxy timeout, /metrics blocked externally
+  - Files: `Dockerfile`, `docker-compose.prod.yml`, `frontend/nginx.conf`
 
-- 🔲 **26. Observability**
-  - `prometheus-fastapi-instrumentator` for `/metrics`
-  - Sentry SDK for error tracking (backend + frontend)
-  - Structured logging with correlation IDs threaded through every request
-  - Files: `src/spacemind/main.py`, `requirements.txt`, `frontend/src/main.tsx`
+- ✅ **26. Observability**
+  - Prometheus metrics at `/metrics` via `prometheus-fastapi-instrumentator` (lazy-loaded, disabled if not installed)
+  - Sentry backend: FastAPI + SQLAlchemy integrations, 10% trace sampling in prod, PII scrubbed
+  - Sentry frontend: dynamic import (zero bundle cost when DSN not set), Authorization header scrubbed
+  - Structured request logs: correlation_id, method, path, status_code, duration_ms, client_ip as log `extra`
+  - Files: `src/spacemind/main.py`, `requirements.txt`, `frontend/src/main.tsx`, `monitoring/prometheus.yml`
 
-- 🔲 **27. Cloud deployment**
-  - Deploy to Fly.io (fast, cost-effective for MVP) or Railway
-  - `DATABASE_URL` → managed PostgreSQL (Neon or Supabase)
-  - Add `fly.toml` and deployment guide in `docs/`
+- ✅ **27. Cloud deployment**
+  - `fly.toml`: app=spacemind-os-api, region=jnb, persistent volume, HTTP health check, Fly metrics
+  - `docs/deployment.md`: step-by-step for Fly.io, Railway, local Docker, managed PostgreSQL options (Neon/Supabase/Railway)
+  - Production checklist: 9-item post-deploy verification
 
 ---
 
@@ -187,38 +191,53 @@ This roadmap tracks the sequenced path from MVP to world-class, production-grade
 > at `C:\Users\sifis\Next-Level-Projects\Facilities 4 Production\derivco-stores-infrastructure-admin`
 > and adopt proven patterns that can elevate SpaceMind OS further.
 
-- 🔲 **28. RBAC — Role-based access control**
-  - UFM uses a `@require_role` decorator pattern with JWT claims
-  - Adopt this for SpaceMind OS: `facilities_manager`, `technician`, `viewer`, `admin` roles
-  - Some routes (decompose, export) gated by role
+- ✅ **28. RBAC — Role-based access control**
+  - `require_role(*roles)` dependency factory in `auth.py` using a 4-level hierarchy: `viewer(0) → technician(1) → facilities_manager(2) → admin(3)`
+  - `/decompose` + `/orchestrate` require `facilities_manager` or `admin`
+  - `/history/{id}/tasks/{task_id}` PATCH requires `technician` or above
+  - All other protected routes require any authenticated user
 
-- 🔲 **29. Audit log model**
-  - UFM has a dedicated `AuditLog` ORM model tracking every write operation with user, timestamp, action, and before/after state
-  - Add this to SpaceMind OS — every decomposition, task status change, and export gets an audit record
+- ✅ **29. Audit log model**
+  - `AuditLog` ORM model: `id`, `created_at`, `user_id`, `user_email`, `action`, `resource_type`, `resource_id`, `details` (JSON)
+  - `AuditService.log()` — never raises, wraps all write failures as warnings
+  - Called on: `decomposition.created` (single + multi-agent), `task.status.updated`
+  - Files: `src/spacemind/domain/models.py`, `src/spacemind/services/audit_service.py`, `src/spacemind/api/router_decompose.py`, `src/spacemind/api/router_history.py`
 
-- 🔲 **30. Custom exception hierarchy**
-  - UFM defines `UFMBaseError` subclasses mapped to specific HTTP response codes
-  - Apply same pattern to SpaceMind OS: `SpaceMindError` → `AIError`, `DecompositionError`, `LocationError`, `TemplateError`
+- ✅ **30. Custom exception hierarchy**
+  - `SpaceMindError` base → `AIError`, `DecompositionError`, `ValidationError`, `LocationError`, `TemplateError`
+  - All exceptions carry `http_status` and `message` — routes catch `SpaceMindError` and return clean HTTP responses, no raw AI output leaks
+  - File: `src/spacemind/core/exceptions.py`
 
-- 🔲 **31. Thread-safe operation locking**
-  - UFM uses `threading.RLock` for atomic stock checkout operations
-  - Evaluate adopting this for concurrent task status updates (prevent race conditions when multiple users mark the same task)
+- ✅ **31. Thread-safe operation locking**
+  - Per-decomposition `threading.RLock` in the repository (`_resource_locks` dict, `_get_lock()` helper)
+  - `update_result_json()` wrapped with `with _get_lock(decomposition_id):` to prevent read-modify-write races
+  - File: `src/spacemind/storage/repository.py`
 
-- 🔲 **32. In-memory TTL cache**
-  - UFM has a thread-safe TTL cache for performance on read-heavy routes
-  - Apply to SpaceMind OS for `/locations` and `/analytics` endpoints (rarely changing data)
+- ✅ **32. In-memory TTL cache**
+  - `TTLCache` class: thread-safe (`threading.Lock`), `get/set/delete/clear` + `@cached(key)` decorator
+  - `locations_cache` (TTL=600s) for `/locations`, `analytics_cache` (TTL=120s) for `/analytics`
+  - Files: `src/spacemind/utils/cache.py`, `src/spacemind/utils/location_context.py`, `src/spacemind/services/decomposition_service.py`
 
-- 🔲 **33. Validation-first pattern**
-  - UFM calls `utils/validators.py` on every write endpoint before touching the data layer
-  - Centralise SpaceMind OS input validation into a dedicated `src/spacemind/utils/validators.py` (currently scattered in Pydantic models + routes)
+- ✅ **33. Validation-first pattern**
+  - Centralised `src/spacemind/core/validators.py` — all validation lives here, routes and services call validators at system boundaries
+  - Validators: `validate_request_text`, `validate_location_id`, `validate_priority`, `validate_date_filter`, `validate_task_status`, `validate_export_format`, `validate_decomposition_request`
+  - File: `src/spacemind/core/validators.py`
 
-- 🔲 **34. Excel import/export pipeline**
-  - UFM uses `pandas` + `openpyxl` for Excel I/O (facilities teams live in Excel)
-  - Add Excel export of execution plans to SpaceMind OS — facilities managers can send plans directly as `.xlsx` workbooks
+- ✅ **34. Excel import/export pipeline**
+  - `ExportService.to_excel()` — `pandas` + `openpyxl`, 5-sheet workbook: Summary, Tasks, Risks, Compliance, Recommendations
+  - Dark header styling (`#1E293B` fill, white bold font), auto-fit column widths (max 60)
+  - `GET /history/{id}/export?format=excel` → `Content-Type: application/vnd.openxmlformats...`, `.xlsx` download
+  - Frontend export dropdown: PDF / EXCEL / JSON / Markdown
+  - Files: `src/spacemind/services/export_service.py`, `src/spacemind/api/router_export.py`, `frontend/src/components/decompose/ResultView.tsx`
 
-- 🔲 **35. Blueprint-based route organisation**
-  - UFM organises 8 route blueprints by feature domain (auth, inventory, signout, medical, insights, admin, providers, achievements)
-  - SpaceMind OS currently has one `routes.py` — split into domain-specific routers as the surface grows: `router_decompose`, `router_locations`, `router_auth`, `router_analytics`, `router_export`
+- ✅ **35. Domain-split route organisation**
+  - Replaced monolithic `routes.py` with 4 domain routers + 1 utility router:
+    - `router_decompose.py` — POST /decompose, POST /orchestrate (RBAC + AuditLog)
+    - `router_history.py` — GET /history, GET /history/{id}, PATCH /history/{id}/tasks/{task_id} (RBAC + AuditLog)
+    - `router_export.py` — GET /history/{id}/export (all formats including Excel)
+    - `router_analytics.py` — GET /analytics
+    - `routes.py` — GET /health, GET /locations (open, no auth)
+  - `main.py` includes each router independently
 
 ---
 

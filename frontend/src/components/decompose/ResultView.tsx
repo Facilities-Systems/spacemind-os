@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import {
   AlertTriangle,
   Building2,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
   Copy,
   Download,
@@ -10,19 +12,44 @@ import {
   Lock,
   Lightbulb,
   ListChecks,
+  Loader2,
 } from 'lucide-react'
 import { PhaseCard } from './PhaseCard'
+import { GanttChart } from './GanttChart'
 import { PriorityBadge, RequestTypeBadge, TenureBadge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import type { DecompositionResult } from '../../types'
+import { api } from '../../api/client'
+import toast from 'react-hot-toast'
 
 interface ResultViewProps {
   result: DecompositionResult
+  decompositionId?: string
 }
 
-export function ResultView({ result }: ResultViewProps) {
+type Tab = 'plan' | 'timeline'
+
+export function ResultView({ result, decompositionId }: ResultViewProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('plan')
+  const [exportLoading, setExportLoading] = useState<string | null>(null)
+  const [showExportMenu, setShowExportMenu] = useState(false)
+
   const copyJSON = () => {
     navigator.clipboard.writeText(JSON.stringify(result, null, 2))
+    toast.success('Copied to clipboard')
+  }
+
+  const handleExport = async (format: 'pdf' | 'json' | 'markdown' | 'excel') => {
+    setShowExportMenu(false)
+    setExportLoading(format)
+    try {
+      await api.exportDecomposition(result.id, format)
+      toast.success(`Exported as ${format === 'markdown' ? 'Markdown' : format.toUpperCase()}`)
+    } catch {
+      toast.error('Export failed — please try again')
+    } finally {
+      setExportLoading(null)
+    }
   }
 
   return (
@@ -47,6 +74,35 @@ export function ResultView({ result }: ResultViewProps) {
             >
               <Copy className="h-3.5 w-3.5" />
             </button>
+            {/* Export dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu((v) => !v)}
+                className="h-8 px-2.5 rounded-lg border border-surface-border flex items-center gap-1.5 text-gray-400 hover:text-white hover:border-brand-700/60 transition-all text-xs font-medium"
+                title="Export plan"
+              >
+                {exportLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                Export
+                <ChevronDown className="h-3 w-3" />
+              </button>
+              {showExportMenu && (
+                <div className="absolute right-0 top-9 z-10 bg-surface-card border border-surface-border rounded-lg shadow-xl py-1 min-w-[120px]">
+                  {(['pdf', 'excel', 'json', 'markdown'] as const).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => handleExport(fmt)}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-surface-muted hover:text-white transition-colors"
+                    >
+                      {fmt === 'markdown' ? 'Markdown' : fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -89,20 +145,48 @@ export function ResultView({ result }: ResultViewProps) {
         />
       </div>
 
-      {/* Phases */}
-      <div>
-        <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
-          <ListChecks className="h-4 w-4 text-brand-400" />
-          Execution Plan — {result.phases.length} Phases
-        </h2>
+      {/* Tab bar */}
+      <div className="flex rounded-xl bg-surface-muted/40 p-1 border border-surface-border w-fit">
+        {([['plan', 'Execution Plan', ListChecks], ['timeline', 'Timeline', Calendar]] as const).map(
+          ([tab, label, Icon]) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab
+                  ? 'bg-brand-600 text-white shadow'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ),
+        )}
+      </div>
+
+      {/* Phases — Execution Plan tab */}
+      {activeTab === 'plan' && (
         <div className="space-y-3">
           {result.phases
             .sort((a, b) => a.order - b.order)
             .map((phase, i) => (
-              <PhaseCard key={phase.name + i} phase={phase} defaultOpen={i === 0} />
+              <PhaseCard
+                key={phase.name + i}
+                phase={phase}
+                defaultOpen={i === 0}
+                decompositionId={decompositionId}
+              />
             ))}
         </div>
-      </div>
+      )}
+
+      {/* Timeline — Gantt tab */}
+      {activeTab === 'timeline' && (
+        <Card>
+          <GanttChart result={result} />
+        </Card>
+      )}
 
       {/* Risks */}
       {result.key_risks.length > 0 && (

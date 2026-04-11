@@ -36,9 +36,19 @@ class Settings(BaseSettings):
     # Features
     enable_history: bool = True
     enable_vector_memory: bool = False
+    enable_multi_agent: bool = False
 
     # Rate limiting
     decompose_rate_limit: str = "10/minute"
+
+    # Observability
+    sentry_dsn: str = ""
+    prometheus_enabled: bool = True
+
+    # Auth
+    secret_key: str = "change-me-in-production-use-openssl-rand-hex-32"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 480   # 8 hours
 
     @property
     def is_production(self) -> bool:

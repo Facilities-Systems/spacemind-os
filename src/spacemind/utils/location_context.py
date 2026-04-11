@@ -2,10 +2,12 @@
 SpaceMind OS — Location Context Utilities
 """
 from spacemind.core.constants import KNOWN_LOCATIONS
+from spacemind.utils.cache import locations_cache
 
 
+@locations_cache.cached("all_locations")
 def list_locations() -> list[dict]:
-    """Return all known locations as a list of dicts for UI display."""
+    """Return all known locations as a list of dicts for UI display (TTL-cached)."""
     return [
         {
             "id": loc_id,

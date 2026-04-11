@@ -117,3 +117,32 @@ export interface Location {
   landlord_required: boolean
   notes: string
 }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface UserOut {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface Token {
+  access_token: string
+  token_type: string
+  user: UserOut
+}
+
+export interface LoginCredentials {
+  username: string   // OAuth2PasswordRequestForm uses 'username'
+  password: string
+}
+
+export interface RegisterPayload {
+  email: string
+  full_name: string
+  password: string
+  role?: string
+}

@@ -15,16 +15,25 @@ export function Spinner({ className, size = 'md' }: { className?: string; size?:
   )
 }
 
-export function LoadingOverlay({ message = 'SpaceMind is thinking...' }: { message?: string }) {
+export function LoadingOverlay({ message }: { message?: string }) {
+  const isDeepAnalysis = message?.includes('5 specialist')
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-20 animate-fade-in">
       <div className="relative">
-        <div className="h-16 w-16 rounded-full border-4 border-surface-border" />
-        <div className="absolute inset-0 h-16 w-16 rounded-full border-4 border-t-brand-500 animate-spin" />
+        <div className={`h-16 w-16 rounded-full border-4 border-surface-border`} />
+        <div className={`absolute inset-0 h-16 w-16 rounded-full border-4 animate-spin ${
+          isDeepAnalysis ? 'border-t-purple-500' : 'border-t-brand-500'
+        }`} />
       </div>
       <div className="text-center">
-        <p className="text-brand-300 font-medium">{message}</p>
-        <p className="text-gray-500 text-sm mt-1">Applying 30 years of FM expertise...</p>
+        <p className={`font-medium ${isDeepAnalysis ? 'text-purple-300' : 'text-brand-300'}`}>
+          {message ?? 'SpaceMind is thinking...'}
+        </p>
+        <p className="text-gray-500 text-sm mt-1">
+          {isDeepAnalysis
+            ? 'Supervisor · Operations · Technical · Vendor · Synthesizer'
+            : 'Applying 30 years of FM expertise...'}
+        </p>
       </div>
     </div>
   )

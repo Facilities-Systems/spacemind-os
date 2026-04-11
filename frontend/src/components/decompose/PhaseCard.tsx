@@ -7,9 +7,10 @@ import type { Phase } from '../../types'
 interface PhaseCardProps {
   phase: Phase
   defaultOpen?: boolean
+  decompositionId?: string
 }
 
-export function PhaseCard({ phase, defaultOpen = true }: PhaseCardProps) {
+export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const totalHours = phase.tasks.reduce((sum, t) => sum + (t.estimated_duration_hours ?? 0), 0)
 
@@ -51,7 +52,7 @@ export function PhaseCard({ phase, defaultOpen = true }: PhaseCardProps) {
       {open && (
         <div className="px-4 pb-4 pt-1 space-y-2 bg-surface animate-fade-in">
           {phase.tasks.map((task, i) => (
-            <TaskRow key={task.id} task={task} index={i} />
+            <TaskRow key={task.id} task={task} index={i} decompositionId={decompositionId} />
           ))}
           {phase.tasks.length === 0 && (
             <p className="text-gray-600 text-sm text-center py-4">No tasks in this phase</p>
