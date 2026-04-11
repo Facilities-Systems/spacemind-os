@@ -69,7 +69,6 @@ export function GanttChart({ result }: GanttChartProps) {
                 phase={phase}
                 widthPct={phaseW}
                 leftPct={phaseX}
-                totalHours={totalHours}
                 phaseHours={phaseHours[idx]}
               />
             )
@@ -98,7 +97,7 @@ export function GanttChart({ result }: GanttChartProps) {
             </tr>
           </thead>
           <tbody>
-            {phases.flatMap((phase, pi) =>
+            {phases.flatMap((phase) =>
               phase.tasks.map((task, ti) => (
                 <tr
                   key={task.id}
@@ -143,13 +142,11 @@ function PhaseRow({
   phase,
   widthPct,
   leftPct,
-  totalHours,
   phaseHours,
 }: {
   phase: Phase
   widthPct: number
   leftPct: number
-  totalHours: number
   phaseHours: number
 }) {
   const estDays = Math.ceil(phaseHours / 8)

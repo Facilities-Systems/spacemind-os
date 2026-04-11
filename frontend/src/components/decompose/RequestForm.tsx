@@ -44,7 +44,6 @@ export function RequestForm({ onSubmit, isLoading, selectedOp, onChangeType }: R
     register,
     handleSubmit,
     setValue,
-    watch,
     control,
     formState: { errors },
   } = useForm<FormValues>({
@@ -56,7 +55,6 @@ export function RequestForm({ onSubmit, isLoading, selectedOp, onChangeType }: R
     },
   })
 
-  const priority = watch('priority')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const handleFormSubmit = (values: FormValues) => {

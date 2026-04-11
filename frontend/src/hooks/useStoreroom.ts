@@ -178,7 +178,7 @@ function loadState(): StoreroomState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw) as StoreroomState
-  } catch {}
+  } catch { /* storage unavailable or corrupted — fall through to defaults */ }
   return { items: SEED_ITEMS, transactions: SEED_TRANSACTIONS, requisitions: SEED_REQUISITIONS }
 }
 
@@ -188,7 +188,7 @@ export function useStoreroom() {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage unavailable — skip persistence */ }
   }, [state])
 
   // Inventory actions

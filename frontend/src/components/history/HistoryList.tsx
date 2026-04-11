@@ -3,7 +3,7 @@ import { ArrowRight, ClipboardList, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PriorityBadge, RequestTypeBadge } from '../ui/Badge'
 import { Card } from '../ui/Card'
-import type { DecompositionSummary } from '../../types'
+import type { DecompositionSummary, RequestType } from '../../types'
 
 export function HistoryList({ items }: { items: DecompositionSummary[] }) {
   const navigate = useNavigate()
@@ -29,7 +29,7 @@ export function HistoryList({ items }: { items: DecompositionSummary[] }) {
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <RequestTypeBadge type={item.request_type as any} />
+              <RequestTypeBadge type={item.request_type as RequestType} />
               <PriorityBadge priority={item.priority} />
             </div>
             <p className="text-sm text-white font-medium line-clamp-2">{item.request_summary}</p>

@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import type { RiskLevel, RequestType, Priority, TenureType, ResponsiblePartyType } from '../../types'
+import type { RiskLevel, RequestType, TenureType, ResponsiblePartyType } from '../../types'
 
 type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'muted' | 'purple'
 
