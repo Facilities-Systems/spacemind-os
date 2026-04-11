@@ -12,8 +12,26 @@ from sqlalchemy.orm import Session
 
 from spacemind.core.exceptions import StorageError
 from spacemind.core.logging import log
-from spacemind.domain.models import DecompositionRecord
-from spacemind.domain.schemas import DecompositionResult, DecompositionSummary
+from spacemind.domain.models import (
+    DecompositionRecord,
+    InventoryItem,
+    InventoryRequisition,
+    InventoryTransaction,
+    MedicalIncident,
+    MedicalItem,
+)
+from spacemind.domain.schemas import (
+    DecompositionResult,
+    DecompositionSummary,
+    IncidentCreate,
+    IncidentStatusUpdate,
+    InventoryItemCreate,
+    InventoryItemUpdate,
+    MedicalItemCreate,
+    MedicalItemUpdate,
+    RequisitionCreate,
+    TransactionCreate,
+)
 
 # Per-resource locks — prevents concurrent task status updates corrupting result_json
 _resource_locks: dict[str, threading.RLock] = {}
@@ -175,3 +193,338 @@ class DecompositionRepository:
             total_tasks=record.total_tasks or 0,
             priority=record.priority or "normal",
         )
+
+
+# ─── Inventory Repository ─────────────────────────────────────────────────────
+
+class InventoryRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_item(self, data: InventoryItemCreate) -> InventoryItem:
+        from uuid import uuid4
+        item = InventoryItem(
+            id=str(uuid4()),
+            name=data.name,
+            code=data.code,
+            category=data.category.value,
+            quantity=data.quantity,
+            unit=data.unit,
+            min_level=data.min_level,
+            location=data.location,
+            notes=data.notes,
+        )
+        try:
+            self.db.add(item)
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def get_item(self, item_id: str) -> Optional[InventoryItem]:
+        return self.db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+
+    def get_item_by_code(self, code: str) -> Optional[InventoryItem]:
+        return self.db.query(InventoryItem).filter(InventoryItem.code == code).first()
+
+    def list_items(
+        self,
+        category: str | None = None,
+        stock_filter: str | None = None,   # "low" | "critical"
+    ) -> List[InventoryItem]:
+        q = self.db.query(InventoryItem)
+        if category:
+            q = q.filter(InventoryItem.category == category)
+        items = q.order_by(InventoryItem.name).all()
+        if stock_filter == "critical":
+            items = [i for i in items if i.quantity == 0]
+        elif stock_filter == "low":
+            items = [i for i in items if 0 < i.quantity <= i.min_level]
+        return items
+
+    def update_item(self, item_id: str, data: InventoryItemUpdate) -> Optional[InventoryItem]:
+        item = self.get_item(item_id)
+        if not item:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(item, field, value)
+        try:
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def delete_item(self, item_id: str) -> bool:
+        item = self.get_item(item_id)
+        if not item:
+            return False
+        try:
+            self.db.delete(item)
+            self.db.commit()
+            return True
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def create_transaction(self, data: TransactionCreate) -> Optional[InventoryTransaction]:
+        from uuid import uuid4
+        item = self.get_item(data.item_id)
+        if not item:
+            return None
+        tx = InventoryTransaction(
+            id=str(uuid4()),
+            item_id=item.id,
+            item_name=item.name,
+            item_code=item.code,
+            quantity=data.quantity,
+            borrower=data.borrower,
+            department=data.department,
+            work_order=data.work_order,
+            expected_return=data.expected_return,
+            notes=data.notes,
+            status="Outstanding",
+        )
+        item.quantity = max(0, item.quantity - data.quantity)
+        try:
+            self.db.add(tx)
+            self.db.commit()
+            self.db.refresh(tx)
+            return tx
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def return_item(self, tx_id: str) -> Optional[InventoryTransaction]:
+        tx = self.db.query(InventoryTransaction).filter(InventoryTransaction.id == tx_id).first()
+        if not tx or tx.status == "Returned":
+            return tx
+        item = self.get_item(tx.item_id)
+        if item:
+            item.quantity += tx.quantity
+        tx.status = "Returned"
+        tx.date_returned = datetime.utcnow()
+        try:
+            self.db.commit()
+            self.db.refresh(tx)
+            return tx
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def list_transactions(
+        self,
+        status: str | None = None,
+        department: str | None = None,
+    ) -> List[InventoryTransaction]:
+        q = self.db.query(InventoryTransaction)
+        if status:
+            q = q.filter(InventoryTransaction.status == status)
+        if department:
+            q = q.filter(InventoryTransaction.department == department)
+        return q.order_by(InventoryTransaction.date_out.desc()).all()
+
+    def create_requisition(self, data: RequisitionCreate) -> InventoryRequisition:
+        from uuid import uuid4
+        req = InventoryRequisition(
+            id=str(uuid4()),
+            requester=data.requester,
+            role=data.role,
+            department=data.department,
+            work_order=data.work_order,
+            priority=data.priority,
+            items_description=data.items_description,
+            notes=data.notes,
+            status="Pending",
+        )
+        try:
+            self.db.add(req)
+            self.db.commit()
+            self.db.refresh(req)
+            return req
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def list_requisitions(self, status: str | None = None) -> List[InventoryRequisition]:
+        q = self.db.query(InventoryRequisition)
+        if status:
+            q = q.filter(InventoryRequisition.status == status)
+        return q.order_by(InventoryRequisition.created_at.desc()).all()
+
+    def update_requisition_status(self, req_id: str, status: str) -> Optional[InventoryRequisition]:
+        req = self.db.query(InventoryRequisition).filter(InventoryRequisition.id == req_id).first()
+        if not req:
+            return None
+        req.status = status
+        try:
+            self.db.commit()
+            self.db.refresh(req)
+            return req
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def get_analytics(self) -> dict:
+        from sqlalchemy import func
+        total = self.db.query(func.count(InventoryItem.id)).scalar() or 0
+        all_items = self.db.query(InventoryItem).all()
+        low_stock = sum(1 for i in all_items if 0 < i.quantity <= i.min_level)
+        critical = sum(1 for i in all_items if i.quantity == 0)
+        outstanding = self.db.query(func.count(InventoryTransaction.id)).filter(
+            InventoryTransaction.status == "Outstanding"
+        ).scalar() or 0
+        pending_reqs = self.db.query(func.count(InventoryRequisition.id)).filter(
+            InventoryRequisition.status == "Pending"
+        ).scalar() or 0
+        return {
+            "total_items": total,
+            "low_stock_count": low_stock,
+            "critical_count": critical,
+            "outstanding_transactions": outstanding,
+            "pending_requisitions": pending_reqs,
+        }
+
+
+# ─── Medical Repository ───────────────────────────────────────────────────────
+
+class MedicalRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_item(self, data: MedicalItemCreate) -> MedicalItem:
+        from uuid import uuid4
+        from datetime import date
+        expiry = None
+        if data.expiry_date:
+            expiry = date.fromisoformat(data.expiry_date)
+        item = MedicalItem(
+            id=str(uuid4()),
+            name=data.name,
+            category=data.category.value,
+            quantity=data.quantity,
+            unit=data.unit,
+            min_level=data.min_level,
+            expiry_date=expiry,
+            location=data.location,
+            notes=data.notes,
+        )
+        try:
+            self.db.add(item)
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def get_item(self, item_id: str) -> Optional[MedicalItem]:
+        return self.db.query(MedicalItem).filter(MedicalItem.id == item_id).first()
+
+    def list_items(self, category: str | None = None) -> List[MedicalItem]:
+        q = self.db.query(MedicalItem)
+        if category:
+            q = q.filter(MedicalItem.category == category)
+        return q.order_by(MedicalItem.name).all()
+
+    def update_item(self, item_id: str, data: MedicalItemUpdate) -> Optional[MedicalItem]:
+        from datetime import date
+        item = self.get_item(item_id)
+        if not item:
+            return None
+        update_data = data.model_dump(exclude_none=True)
+        if "expiry_date" in update_data and update_data["expiry_date"]:
+            update_data["expiry_date"] = date.fromisoformat(update_data["expiry_date"])
+        for field, value in update_data.items():
+            setattr(item, field, value)
+        try:
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def delete_item(self, item_id: str) -> bool:
+        item = self.get_item(item_id)
+        if not item:
+            return False
+        try:
+            self.db.delete(item)
+            self.db.commit()
+            return True
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def create_incident(self, data: IncidentCreate) -> MedicalIncident:
+        from uuid import uuid4
+        incident = MedicalIncident(
+            id=str(uuid4()),
+            incident_type=data.incident_type,
+            severity=data.severity.value,
+            employee_name=data.employee_name,
+            department=data.department,
+            description=data.description,
+            treatment=data.treatment,
+            status="Open",
+        )
+        try:
+            self.db.add(incident)
+            self.db.commit()
+            self.db.refresh(incident)
+            return incident
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def list_incidents(self, status: str | None = None) -> List[MedicalIncident]:
+        q = self.db.query(MedicalIncident)
+        if status:
+            q = q.filter(MedicalIncident.status == status)
+        return q.order_by(MedicalIncident.reported_at.desc()).all()
+
+    def update_incident_status(self, incident_id: str, status: str) -> Optional[MedicalIncident]:
+        incident = self.db.query(MedicalIncident).filter(MedicalIncident.id == incident_id).first()
+        if not incident:
+            return None
+        incident.status = status
+        if status in ("Resolved", "Referred"):
+            incident.resolved_at = datetime.utcnow()
+        try:
+            self.db.commit()
+            self.db.refresh(incident)
+            return incident
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def get_analytics(self) -> dict:
+        from datetime import date, timedelta
+        from sqlalchemy import func
+        total = self.db.query(func.count(MedicalItem.id)).scalar() or 0
+        all_items = self.db.query(MedicalItem).all()
+        low_stock = sum(1 for i in all_items if i.quantity <= i.min_level)
+        today = date.today()
+        soon = today + timedelta(days=30)
+        expiring_soon = sum(
+            1 for i in all_items
+            if i.expiry_date and today <= i.expiry_date <= soon
+        )
+        open_incidents = self.db.query(func.count(MedicalIncident.id)).filter(
+            MedicalIncident.status == "Open"
+        ).scalar() or 0
+        critical_incidents = self.db.query(func.count(MedicalIncident.id)).filter(
+            MedicalIncident.status == "Open",
+            MedicalIncident.severity == "Critical",
+        ).scalar() or 0
+        return {
+            "total_items": total,
+            "low_stock_count": low_stock,
+            "expiring_soon_count": expiring_soon,
+            "open_incidents": open_incidents,
+            "critical_incidents": critical_incidents,
+        }

@@ -1,12 +1,6 @@
 import { AlertTriangle, CheckCircle2, Heart, Phone, PlusCircle, ShieldCheck, Stethoscope, Thermometer } from 'lucide-react'
 import { Header } from '../components/layout/Header'
-
-const STATS = [
-  { label: 'Open Incidents', value: '2', sub: 'Requiring attention' },
-  { label: 'Critical Cases', value: '0', sub: 'Emergency level', accent: '#10b981' },
-  { label: 'Low Medical Stock', value: '3', sub: 'First aid items', alert: true },
-  { label: 'Expiring Soon', value: '5', sub: 'Within 30 days', alert: true },
-]
+import { useMedical } from '../hooks/useMedical'
 
 const QUICK_ACTIONS = [
   { emoji: '📋', label: 'New Incident', desc: 'Log a medical incident or injury report' },
@@ -15,33 +9,17 @@ const QUICK_ACTIONS = [
   { emoji: '🩺', label: 'Equipment', desc: 'Check medical equipment status & calibration' },
 ]
 
-const INCIDENTS = [
-  { id: 'INC-0041', date: '2026-04-11', time: '09:14', patient: 'Nompumelelo Dube', dept: 'Operations', type: 'Slip & Fall', severity: 'Minor', status: 'Closed' },
-  { id: 'INC-0042', date: '2026-04-10', time: '14:32', patient: 'Thulani Ngcobo', dept: 'IT', type: 'Eye Strain', severity: 'Minor', status: 'Open' },
-  { id: 'INC-0039', date: '2026-04-08', time: '11:05', patient: 'Zanele Mkhize', dept: 'Facilities', type: 'Cut / Laceration', severity: 'Serious', status: 'Follow-up' },
-  { id: 'INC-0038', date: '2026-04-07', time: '08:50', patient: 'Mpendulo Sithole', dept: 'Maintenance', type: 'Chemical Exposure', severity: 'Serious', status: 'Closed' },
-]
-
-const FIRST_AID = [
-  { no: 1,  name: 'Triangular Bandages',   code: 'FA-001', qty: 8,  unit: 'Pcs', min: 5,  status: 'Good',     expiry: '2027-06' },
-  { no: 2,  name: 'Sterile Gauze Pads',    code: 'FA-002', qty: 12, unit: 'Pcs', min: 20, status: 'Low',      expiry: '2026-12' },
-  { no: 3,  name: 'Antiseptic Solution',   code: 'FA-003', qty: 2,  unit: 'Bot', min: 4,  status: 'Critical', expiry: '2026-05' },
-  { no: 4,  name: 'Disposable Gloves (M)', code: 'FA-004', qty: 40, unit: 'Prs', min: 30, status: 'Good',     expiry: '2028-01' },
-  { no: 5,  name: 'CPR Face Shield',       code: 'FA-005', qty: 3,  unit: 'Pcs', min: 3,  status: 'Good',     expiry: '2027-09' },
-  { no: 6,  name: 'Burn Dressing 10x10cm', code: 'FA-006', qty: 4,  unit: 'Pcs', min: 6,  status: 'Low',      expiry: '2026-08' },
-  { no: 7,  name: 'Eye Wash Station',      code: 'FA-007', qty: 1,  unit: 'Unit',min: 1,  status: 'Good',     expiry: '2026-06' },
-]
-
 const SEVERITY_STYLE: Record<string, { bg: string; color: string }> = {
-  Minor:    { bg: 'rgba(16,185,129,0.2)',  color: '#6ee7b7' },
-  Serious:  { bg: 'rgba(245,158,11,0.2)',  color: '#fcd34d' },
+  Low:      { bg: 'rgba(16,185,129,0.2)',  color: '#6ee7b7' },
+  Medium:   { bg: 'rgba(245,158,11,0.2)',  color: '#fcd34d' },
+  High:     { bg: 'rgba(245,158,11,0.2)',  color: '#fcd34d' },
   Critical: { bg: 'rgba(239,68,68,0.2)',   color: '#f87171' },
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  Open:      { bg: 'rgba(239,68,68,0.2)',   color: '#f87171' },
-  'Follow-up': { bg: 'rgba(245,158,11,0.2)', color: '#fcd34d' },
-  Closed:    { bg: 'rgba(16,185,129,0.2)',  color: '#6ee7b7' },
+  Open:     { bg: 'rgba(239,68,68,0.2)',   color: '#f87171' },
+  Referred: { bg: 'rgba(245,158,11,0.2)',  color: '#fcd34d' },
+  Resolved: { bg: 'rgba(16,185,129,0.2)',  color: '#6ee7b7' },
 }
 
 const STOCK_STYLE: Record<string, { bg: string; color: string }> = {
@@ -50,7 +28,47 @@ const STOCK_STYLE: Record<string, { bg: string; color: string }> = {
   Critical: { bg: 'rgba(239,68,68,0.2)',   color: '#f87171' },
 }
 
+function itemStockStatus(qty: number, min: number): 'Critical' | 'Low' | 'Good' {
+  if (qty === 0) return 'Critical'
+  if (qty <= min) return 'Low'
+  return 'Good'
+}
+
 export function MedicalPage() {
+  const { analytics, incidents, items, isLoading } = useMedical()
+
+  const stats = [
+    { label: 'Open Incidents',    value: analytics ? String(analytics.open_incidents)      : '—', sub: 'Requiring attention' },
+    { label: 'Critical Cases',    value: analytics ? String(analytics.critical_incidents)   : '—', sub: 'Emergency level', accent: '#10b981' },
+    { label: 'Low Medical Stock', value: analytics ? String(analytics.low_stock_count)      : '—', sub: 'First aid items',  alert: (analytics?.low_stock_count  ?? 0) > 0 },
+    { label: 'Expiring Soon',     value: analytics ? String(analytics.expiring_soon_count)  : '—', sub: 'Within 30 days',  alert: (analytics?.expiring_soon_count ?? 0) > 0 },
+  ]
+
+  const incidentRows = incidents.map(inc => {
+    const dt = new Date(inc.reported_at)
+    return {
+      id:       inc.id.slice(-8).toUpperCase(),
+      date:     dt.toISOString().split('T')[0],
+      time:     dt.toTimeString().slice(0, 5),
+      patient:  inc.employee_name ?? '—',
+      dept:     inc.department    ?? '—',
+      type:     inc.incident_type,
+      severity: inc.severity,
+      status:   inc.status,
+    }
+  })
+
+  const itemRows = items.map((item, i) => ({
+    no:     i + 1,
+    name:   item.name,
+    code:   `MED-${String(i + 1).padStart(3, '0')}`,
+    qty:    item.quantity,
+    unit:   item.unit,
+    min:    item.min_level,
+    status: itemStockStatus(item.quantity, item.min_level),
+    expiry: item.expiry_date ? item.expiry_date.slice(0, 7) : '—',
+  }))
+
   return (
     <div className="flex flex-col h-full">
       <Header title="Medical Services" subtitle="People & Wellness — Health Center Dashboard" />
@@ -59,7 +77,7 @@ export function MedicalPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {STATS.map(s => (
+          {stats.map(s => (
             <div
               key={s.label}
               className="rounded-xl p-4 border-2"
@@ -119,12 +137,16 @@ export function MedicalPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {INCIDENTS.map((inc, i) => {
-                        const sev = SEVERITY_STYLE[inc.severity]
-                        const sts = STATUS_STYLE[inc.status]
+                      {isLoading ? (
+                        <tr><td colSpan={7} className="px-3 py-6 text-center text-gray-500 text-sm">Loading incidents…</td></tr>
+                      ) : incidentRows.length === 0 ? (
+                        <tr><td colSpan={7} className="px-3 py-6 text-center text-gray-500 text-sm">No incidents recorded.</td></tr>
+                      ) : incidentRows.map((inc, i) => {
+                        const sev = SEVERITY_STYLE[inc.severity] ?? { bg: 'rgba(100,100,100,0.2)', color: '#9ca3af' }
+                        const sts = STATUS_STYLE[inc.status]     ?? { bg: 'rgba(100,100,100,0.2)', color: '#9ca3af' }
                         return (
                           <tr
-                            key={i}
+                            key={inc.id}
                             className="border-t"
                             style={{ borderColor: 'rgba(14,165,233,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.6)' }}
                           >
@@ -167,11 +189,15 @@ export function MedicalPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {FIRST_AID.map((row, i) => {
+                      {isLoading ? (
+                        <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-500 text-sm">Loading items…</td></tr>
+                      ) : itemRows.length === 0 ? (
+                        <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-500 text-sm">No medical items found.</td></tr>
+                      ) : itemRows.map((row, i) => {
                         const s = STOCK_STYLE[row.status]
                         return (
                           <tr
-                            key={i}
+                            key={row.code}
                             className="border-t"
                             style={{ borderColor: 'rgba(14,165,233,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.6)' }}
                           >
@@ -227,10 +253,10 @@ export function MedicalPage() {
                 EMERGENCY CONTACTS
               </h3>
               {[
-                { label: 'Emergency Services', num: '10177', color: '#f87171' },
+                { label: 'Emergency Services', num: '10177',        color: '#f87171' },
                 { label: 'Local Hospital',     num: '031 240 1111', color: '#38bdf8' },
-                { label: 'Company Nurse',      num: 'Ext. 4400', color: '#6ee7b7' },
-                { label: 'Security Desk',      num: 'Ext. 4000', color: '#a3e635' },
+                { label: 'Company Nurse',      num: 'Ext. 4400',    color: '#6ee7b7' },
+                { label: 'Security Desk',      num: 'Ext. 4000',    color: '#a3e635' },
               ].map(c => (
                 <div key={c.label} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'rgba(14,165,233,0.15)' }}>
                   <p className="text-gray-400 text-xs">{c.label}</p>
@@ -249,10 +275,10 @@ export function MedicalPage() {
                 OHS COMPLIANCE
               </h3>
               {[
-                { label: 'Last Drill',           value: '2026-03-14' },
-                { label: 'Risk Assessment',      value: 'Current' },
-                { label: 'First Aider Ratio',    value: '1:50 ✅' },
-                { label: 'OHS Representative',   value: 'B. Nkosi' },
+                { label: 'Last Drill',         value: '2026-03-14' },
+                { label: 'Risk Assessment',    value: 'Current'    },
+                { label: 'First Aider Ratio',  value: '1:50 ✅'   },
+                { label: 'OHS Representative', value: 'B. Nkosi'   },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: 'rgba(16,185,129,0.15)' }}>
                   <p className="text-gray-400 text-xs">{item.label}</p>

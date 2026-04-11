@@ -30,25 +30,26 @@ import {
   PRIORITY_STYLE,
   type InventoryItem,
   type ItemCategory,
-  type Priority,
+  type StockPriority,
   type TxStatus,
 } from '../hooks/useStoreroom'
+import type { SignOutTx } from '../types'
 
 // ─── Form defaults ────────────────────────────────────────────────────────────
 
 const defaultItemForm = {
   name: '', code: '', category: 'Tools' as ItemCategory,
-  quantity: 0, unit: 'Pcs', minLevel: 5, location: '',
+  quantity: 0, unit: 'Pcs', min_level: 5, location: '',
 }
 
 const defaultSignOutForm = {
-  itemId: '', quantity: 1, borrower: '', department: '',
-  woReq: '', expectedReturn: '', notes: '',
+  item_id: '', quantity: 1, borrower: '', department: '',
+  work_order: '', expected_return: '', notes: '',
 }
 
 const defaultReqForm = {
-  requester: '', role: '', department: '', woReq: '',
-  priority: 'Medium' as Priority, items: '', notes: '',
+  requester: '', role: '', department: '', work_order: '',
+  priority: 'Medium' as StockPriority, items_description: '', notes: '',
 }
 
 // ─── Shared input style ───────────────────────────────────────────────────────
@@ -68,8 +69,8 @@ const sel = { ...inp, cursor: 'pointer' } as const
 
 // ─── Stewardship computation ──────────────────────────────────────────────────
 
-function computeStewardship(transactions: ReturnType<typeof useStoreroom>['state']['transactions']) {
-  const map = new Map<string, { borrower: string; dept: string; total: number; returned: number; overdue: number }>()
+function computeStewardship(transactions: SignOutTx[]) {
+  const map = new Map<string, { borrower: string; dept: string | null; total: number; returned: number; overdue: number }>()
   for (const tx of transactions) {
     const prev = map.get(tx.borrower) ?? { borrower: tx.borrower, dept: tx.department, total: 0, returned: 0, overdue: 0 }
     prev.total++
@@ -126,7 +127,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function StoreroomPage() {
-  const { state, addItem, updateItem, deleteItem, signOut, returnItem, addRequisition, updateReqStatus, itemStockStatus } = useStoreroom()
+  const {
+    items, transactions, requisitions, isLoading,
+    addItem, updateItem, deleteItem,
+    signOut, returnItem,
+    addRequisition, updateReqStatus,
+    itemStockStatus,
+  } = useStoreroom()
 
   // Tab
   const [tab, setTab] = useState<Tab>('inventory')
@@ -163,33 +170,33 @@ export function StoreroomPage() {
   }, [])
 
   // ── Computed ──
-  const filteredItems = state.items.filter(item => {
+  const filteredItems = items.filter(item => {
     if (catFilter !== 'All' && item.category !== catFilter) return false
-    if (stockFilter === 'Low'      && itemStockStatus(item) !== 'Low')      return false
-    if (stockFilter === 'Critical' && itemStockStatus(item) !== 'Critical') return false
+    if (stockFilter === 'Low'      && itemStockStatus(item.quantity, item.min_level) !== 'Low')      return false
+    if (stockFilter === 'Critical' && itemStockStatus(item.quantity, item.min_level) !== 'Critical') return false
     const q = search.toLowerCase()
     if (q && !item.name.toLowerCase().includes(q) && !item.code.toLowerCase().includes(q)) return false
     return true
   })
 
-  const filteredTxs = state.transactions.filter(tx => {
-    if (txStatus !== 'All' && tx.status !== txStatus)          return false
-    if (txDept   !== 'All' && tx.department !== txDept)        return false
+  const filteredTxs = transactions.filter(tx => {
+    if (txStatus !== 'All' && tx.status !== txStatus)   return false
+    if (txDept   !== 'All' && tx.department !== txDept) return false
     return true
   })
 
-  const lowCount      = state.items.filter(i => itemStockStatus(i) === 'Low').length
-  const criticalCount = state.items.filter(i => itemStockStatus(i) === 'Critical').length
-  const outstanding   = state.transactions.filter(tx => tx.status === 'Outstanding').length
-  const overdue       = state.transactions.filter(tx => tx.status === 'Overdue').length
-  const pendingReqs   = state.requisitions.filter(r => r.status === 'Pending').length
+  const lowCount      = items.filter(i => itemStockStatus(i.quantity, i.min_level) === 'Low').length
+  const criticalCount = items.filter(i => itemStockStatus(i.quantity, i.min_level) === 'Critical').length
+  const outstanding   = transactions.filter(tx => tx.status === 'Outstanding').length
+  const overdue       = transactions.filter(tx => tx.status === 'Overdue').length
+  const pendingReqs   = requisitions.filter(r => r.status === 'Pending').length
 
-  const stewardship = computeStewardship(state.transactions)
+  const stewardship = computeStewardship(transactions)
 
-  const allDepts = Array.from(new Set(state.transactions.map(t => t.department))).sort()
+  const allDepts = Array.from(new Set(transactions.map(t => t.department).filter(Boolean))).sort() as string[]
 
   // ── Sign-out form helpers ──
-  const soItem = state.items.find(i => i.id === signOutForm.itemId)
+  const soItem = items.find(i => i.id === signOutForm.item_id)
   const maxQty = soItem?.quantity ?? 0
 
   // ── Handlers ──
@@ -198,7 +205,16 @@ export function StoreroomPage() {
       setFormError('Name, Code, and Location are required.')
       return
     }
-    addItem(itemForm)
+    addItem.mutate({
+      name:      itemForm.name,
+      code:      itemForm.code,
+      category:  itemForm.category,
+      quantity:  itemForm.quantity,
+      unit:      itemForm.unit,
+      min_level: itemForm.min_level,
+      location:  itemForm.location,
+      notes:     null,
+    })
     setAddItemOpen(false)
     setItemForm(defaultItemForm)
     setFormError('')
@@ -208,7 +224,8 @@ export function StoreroomPage() {
     setEditItem(item)
     setItemForm({
       name: item.name, code: item.code, category: item.category,
-      quantity: item.quantity, unit: item.unit, minLevel: item.minLevel, location: item.location,
+      quantity: item.quantity, unit: item.unit, min_level: item.min_level,
+      location: item.location ?? '',
     })
     setFormError('')
   }
@@ -219,14 +236,22 @@ export function StoreroomPage() {
       setFormError('Name, Code, and Location are required.')
       return
     }
-    updateItem({ ...editItem, ...itemForm })
+    updateItem.mutate({
+      id:        editItem.id,
+      name:      itemForm.name,
+      category:  itemForm.category,
+      quantity:  itemForm.quantity,
+      unit:      itemForm.unit,
+      min_level: itemForm.min_level,
+      location:  itemForm.location,
+    })
     setEditItem(null)
     setItemForm(defaultItemForm)
     setFormError('')
   }
 
   function handleSignOut() {
-    if (!signOutForm.itemId || !signOutForm.borrower.trim() || !signOutForm.woReq.trim() || !signOutForm.expectedReturn) {
+    if (!signOutForm.item_id || !signOutForm.borrower.trim() || !signOutForm.work_order.trim() || !signOutForm.expected_return) {
       setFormError('Item, Borrower, WO/REQ, and Expected Return are required.')
       return
     }
@@ -234,17 +259,14 @@ export function StoreroomPage() {
       setFormError(`Quantity must be between 1 and ${maxQty}.`)
       return
     }
-    signOut({
-      itemId:         signOutForm.itemId,
-      itemName:       soItem!.name,
-      itemCode:       soItem!.code,
-      quantity:       signOutForm.quantity,
-      borrower:       signOutForm.borrower,
-      department:     signOutForm.department,
-      woReq:          signOutForm.woReq,
-      dateOut:        new Date().toISOString().split('T')[0],
-      expectedReturn: signOutForm.expectedReturn,
-      notes:          signOutForm.notes,
+    signOut.mutate({
+      item_id:         signOutForm.item_id,
+      quantity:        signOutForm.quantity,
+      borrower:        signOutForm.borrower,
+      department:      signOutForm.department || undefined,
+      work_order:      signOutForm.work_order,
+      expected_return: signOutForm.expected_return,
+      notes:           signOutForm.notes || undefined,
     })
     setSignOutOpen(false)
     setSignOutForm(defaultSignOutForm)
@@ -252,11 +274,19 @@ export function StoreroomPage() {
   }
 
   function handleAddReq() {
-    if (!reqForm.requester.trim() || !reqForm.woReq.trim() || !reqForm.items.trim()) {
+    if (!reqForm.requester.trim() || !reqForm.work_order.trim() || !reqForm.items_description.trim()) {
       setFormError('Requester, WO/REQ, and Items Needed are required.')
       return
     }
-    addRequisition(reqForm)
+    addRequisition.mutate({
+      requester:         reqForm.requester,
+      role:              reqForm.role || undefined,
+      department:        reqForm.department || undefined,
+      work_order:        reqForm.work_order,
+      priority:          reqForm.priority,
+      items_description: reqForm.items_description,
+      notes:             reqForm.notes || undefined,
+    })
     setReqOpen(false)
     setReqForm(defaultReqForm)
     setFormError('')
@@ -264,10 +294,10 @@ export function StoreroomPage() {
 
   // ── Tab config ──
   const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: 'inventory',    label: 'Inventory',    icon: <Boxes className="h-4 w-4" />,       badge: criticalCount + lowCount || undefined },
-    { key: 'signout',      label: 'Sign-Out',     icon: <ClipboardList className="h-4 w-4" />,badge: overdue || undefined },
+    { key: 'inventory',    label: 'Inventory',    icon: <Boxes className="h-4 w-4" />,        badge: criticalCount + lowCount || undefined },
+    { key: 'signout',      label: 'Sign-Out',     icon: <ClipboardList className="h-4 w-4" />, badge: overdue || undefined },
     { key: 'cameras',      label: 'Cameras',      icon: <Camera className="h-4 w-4" /> },
-    { key: 'requisitions', label: 'Requisitions', icon: <FileText className="h-4 w-4" />,    badge: pendingReqs || undefined },
+    { key: 'requisitions', label: 'Requisitions', icon: <FileText className="h-4 w-4" />,     badge: pendingReqs || undefined },
   ]
 
   return (
@@ -279,11 +309,11 @@ export function StoreroomPage() {
         {/* ── Stats strip ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: 'Total SKUs',      value: state.items.length,               color: '#008080', alert: false },
-            { label: 'Low Stock',       value: lowCount,                         color: '#f59e0b', alert: lowCount > 0 },
-            { label: 'Critical / Zero', value: criticalCount,                    color: '#ef4444', alert: criticalCount > 0 },
-            { label: 'Outstanding',     value: outstanding,                      color: '#6366f1', alert: false },
-            { label: 'Overdue',         value: overdue,                          color: '#ef4444', alert: overdue > 0 },
+            { label: 'Total SKUs',      value: items.length,   color: '#008080', alert: false },
+            { label: 'Low Stock',       value: lowCount,        color: '#f59e0b', alert: lowCount > 0 },
+            { label: 'Critical / Zero', value: criticalCount,   color: '#ef4444', alert: criticalCount > 0 },
+            { label: 'Outstanding',     value: outstanding,     color: '#6366f1', alert: false },
+            { label: 'Overdue',         value: overdue,         color: '#ef4444', alert: overdue > 0 },
           ].map(s => (
             <div
               key={s.label}
@@ -408,15 +438,16 @@ export function StoreroomPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.length === 0 && (
+                    {isLoading ? (
+                      <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500 text-sm">Loading inventory…</td></tr>
+                    ) : filteredItems.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="px-4 py-8 text-center text-gray-500 text-sm">
                           No items match your filters.
                         </td>
                       </tr>
-                    )}
-                    {filteredItems.map((item, i) => {
-                      const st = itemStockStatus(item)
+                    ) : filteredItems.map((item, i) => {
+                      const st  = itemStockStatus(item.quantity, item.min_level)
                       const sty = STOCK_STYLE[st]
                       return (
                         <tr
@@ -430,19 +461,19 @@ export function StoreroomPage() {
                           <td className="px-3 py-2.5">
                             <div className="flex items-center gap-1">
                               <button
-                                onClick={() => updateItem({ ...item, quantity: Math.max(0, item.quantity - 1) })}
+                                onClick={() => updateItem.mutate({ id: item.id, quantity: Math.max(0, item.quantity - 1) })}
                                 className="h-5 w-5 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
                               >
                                 <Minus className="h-3 w-3" />
                               </button>
                               <span
                                 className="font-bold min-w-8 text-center"
-                                style={{ color: item.quantity === 0 ? '#f87171' : item.quantity < item.minLevel ? '#fcd34d' : '#6ee7b7' }}
+                                style={{ color: item.quantity === 0 ? '#f87171' : item.quantity < item.min_level ? '#fcd34d' : '#6ee7b7' }}
                               >
                                 {item.quantity}
                               </span>
                               <button
-                                onClick={() => updateItem({ ...item, quantity: item.quantity + 1 })}
+                                onClick={() => updateItem.mutate({ id: item.id, quantity: item.quantity + 1 })}
                                 className="h-5 w-5 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all"
                               >
                                 <Plus className="h-3 w-3" />
@@ -450,7 +481,7 @@ export function StoreroomPage() {
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-gray-500 text-xs">{item.unit}</td>
-                          <td className="px-3 py-2.5 text-gray-500">{item.minLevel}</td>
+                          <td className="px-3 py-2.5 text-gray-500">{item.min_level}</td>
                           <td className="px-3 py-2.5 font-mono text-xs text-gray-400">{item.location}</td>
                           <td className="px-3 py-2.5">
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: sty.bg, color: sty.color }}>
@@ -482,7 +513,7 @@ export function StoreroomPage() {
                 </table>
               </div>
             </div>
-            <p className="text-xs text-gray-600">Showing {filteredItems.length} of {state.items.length} items · Last updated live</p>
+            <p className="text-xs text-gray-600">Showing {filteredItems.length} of {items.length} items · Last updated live</p>
           </div>
         )}
 
@@ -534,10 +565,11 @@ export function StoreroomPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTxs.length === 0 && (
+                    {isLoading ? (
+                      <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-500 text-sm">Loading transactions…</td></tr>
+                    ) : filteredTxs.length === 0 ? (
                       <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-500 text-sm">No transactions match your filters.</td></tr>
-                    )}
-                    {filteredTxs.map((tx, i) => {
+                    ) : filteredTxs.map((tx, i) => {
                       const sty = TX_STYLE[tx.status]
                       return (
                         <tr
@@ -545,8 +577,8 @@ export function StoreroomPage() {
                           className="border-t"
                           style={{ borderColor: 'rgba(0,128,128,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.5)' }}
                         >
-                          <td className="px-3 py-2.5 font-mono text-xs text-teal-300">{tx.itemCode}</td>
-                          <td className="px-3 py-2.5 text-white font-medium whitespace-nowrap">{tx.itemName}</td>
+                          <td className="px-3 py-2.5 font-mono text-xs text-teal-300">{tx.item_code}</td>
+                          <td className="px-3 py-2.5 text-white font-medium whitespace-nowrap">{tx.item_name}</td>
                           <td className="px-3 py-2.5 text-center font-bold text-gray-300">{tx.quantity}</td>
                           <td className="px-3 py-2.5 text-gray-300 whitespace-nowrap">{tx.borrower}</td>
                           <td className="px-3 py-2.5 text-gray-400 whitespace-nowrap">{tx.department}</td>
@@ -554,15 +586,15 @@ export function StoreroomPage() {
                             <span
                               className="font-mono text-xs px-1.5 py-0.5 rounded"
                               style={{
-                                backgroundColor: tx.woReq ? 'rgba(0,128,128,0.15)' : 'rgba(239,68,68,0.15)',
-                                color: tx.woReq ? '#2dd4bf' : '#f87171',
+                                backgroundColor: tx.work_order ? 'rgba(0,128,128,0.15)' : 'rgba(239,68,68,0.15)',
+                                color: tx.work_order ? '#2dd4bf' : '#f87171',
                               }}
                             >
-                              {tx.woReq || 'MISSING'}
+                              {tx.work_order || 'MISSING'}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{tx.dateOut}</td>
-                          <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{tx.expectedReturn}</td>
+                          <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{tx.date_out?.slice(0, 10)}</td>
+                          <td className="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">{tx.expected_return?.slice(0, 10)}</td>
                           <td className="px-3 py-2.5">
                             <span className="text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: sty.bg, color: sty.color }}>
                               {tx.status}
@@ -571,7 +603,7 @@ export function StoreroomPage() {
                           <td className="px-3 py-2.5">
                             {tx.status !== 'Returned' && (
                               <button
-                                onClick={() => returnItem(tx.id, tx.itemId, tx.quantity)}
+                                onClick={() => returnItem.mutate(tx.id)}
                                 className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg transition-all"
                                 style={{ backgroundColor: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.35)' }}
                               >
@@ -581,7 +613,7 @@ export function StoreroomPage() {
                             )}
                             {tx.status === 'Returned' && (
                               <span className="flex items-center gap-1 text-xs text-gray-600">
-                                <CheckCircle2 className="h-3 w-3 text-green-600" /> {tx.dateReturned}
+                                <CheckCircle2 className="h-3 w-3 text-green-600" /> {tx.date_returned?.slice(0, 10)}
                               </span>
                             )}
                           </td>
@@ -735,10 +767,11 @@ export function StoreroomPage() {
 
             {/* List */}
             <div className="space-y-3">
-              {state.requisitions.length === 0 && (
+              {isLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">Loading requisitions…</p>
+              ) : requisitions.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-8">No requisitions yet.</p>
-              )}
-              {state.requisitions.map(req => {
+              ) : requisitions.map(req => {
                 const rs = REQ_STYLE[req.status]
                 const ps = PRIORITY_STYLE[req.priority]
                 return (
@@ -751,21 +784,21 @@ export function StoreroomPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: rs.bg, color: rs.color }}>{req.status}</span>
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: ps.bg, color: ps.color }}>{req.priority}</span>
-                        <span className="font-mono text-xs text-teal-300">{req.woReq}</span>
-                        <span className="text-xs text-gray-500">· {req.dateSubmitted}</span>
+                        <span className="font-mono text-xs text-teal-300">{req.work_order}</span>
+                        <span className="text-xs text-gray-500">· {req.created_at?.slice(0, 10)}</span>
                       </div>
                       {/* Status actions */}
                       {req.status === 'Pending' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => updateReqStatus(req.id, 'Approved')}
+                            onClick={() => updateReqStatus.mutate({ id: req.id, status: 'Approved' })}
                             className="text-xs font-bold px-3 py-1 rounded-lg transition-all"
                             style={{ backgroundColor: 'rgba(14,165,233,0.2)', color: '#38bdf8', border: '1px solid rgba(14,165,233,0.3)' }}
                           >
                             Approve
                           </button>
                           <button
-                            onClick={() => updateReqStatus(req.id, 'Rejected')}
+                            onClick={() => updateReqStatus.mutate({ id: req.id, status: 'Rejected' })}
                             className="text-xs font-bold px-3 py-1 rounded-lg transition-all"
                             style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}
                           >
@@ -775,7 +808,7 @@ export function StoreroomPage() {
                       )}
                       {req.status === 'Approved' && (
                         <button
-                          onClick={() => updateReqStatus(req.id, 'Issued')}
+                          onClick={() => updateReqStatus.mutate({ id: req.id, status: 'Issued' })}
                           className="text-xs font-bold px-3 py-1 rounded-lg transition-all"
                           style={{ backgroundColor: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
                         >
@@ -792,7 +825,7 @@ export function StoreroomPage() {
                       </div>
                       <div>
                         <p className="text-gray-500 uppercase tracking-wider mb-0.5">Items Needed</p>
-                        <p className="text-gray-300 leading-relaxed">{req.items}</p>
+                        <p className="text-gray-300 leading-relaxed">{req.items_description}</p>
                       </div>
                     </div>
 
@@ -862,12 +895,12 @@ export function StoreroomPage() {
       {deleteId && (
         <Modal title="Delete Item" onClose={() => setDeleteId(null)}>
           <p className="text-gray-300 text-sm mb-5">
-            Are you sure you want to remove <strong className="text-white">{state.items.find(i => i.id === deleteId)?.name}</strong> from inventory?
+            Are you sure you want to remove <strong className="text-white">{items.find(i => i.id === deleteId)?.name}</strong> from inventory?
             This cannot be undone.
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => { deleteItem(deleteId); setDeleteId(null) }}
+              onClick={() => { deleteItem.mutate(deleteId); setDeleteId(null) }}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
               style={{ backgroundColor: 'rgba(239,68,68,0.2)', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)' }}
             >
@@ -893,12 +926,12 @@ export function StoreroomPage() {
               <div className="relative">
                 <select
                   style={sel}
-                  value={signOutForm.itemId}
-                  onChange={e => setSignOutForm(f => ({ ...f, itemId: e.target.value, quantity: 1 }))}
+                  value={signOutForm.item_id}
+                  onChange={e => setSignOutForm(f => ({ ...f, item_id: e.target.value, quantity: 1 }))}
                   className="pr-8 appearance-none"
                 >
                   <option value="">— Select an item —</option>
-                  {state.items.filter(i => i.quantity > 0).map(i => (
+                  {items.filter(i => i.quantity > 0).map(i => (
                     <option key={i.id} value={i.id}>{i.code} · {i.name} ({i.quantity} {i.unit} available)</option>
                   ))}
                 </select>
@@ -940,13 +973,13 @@ export function StoreroomPage() {
             {/* WO/REQ */}
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">WO / REQ Number *</label>
-              <input style={inp} placeholder="e.g. WO-2050 or REQ-0210" value={signOutForm.woReq} onChange={e => setSignOutForm(f => ({ ...f, woReq: e.target.value }))} />
+              <input style={inp} placeholder="e.g. WO-2050 or REQ-0210" value={signOutForm.work_order} onChange={e => setSignOutForm(f => ({ ...f, work_order: e.target.value }))} />
             </div>
 
             {/* Expected Return */}
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Expected Return Date *</label>
-              <input type="date" style={inp} value={signOutForm.expectedReturn} onChange={e => setSignOutForm(f => ({ ...f, expectedReturn: e.target.value }))} />
+              <input type="date" style={inp} value={signOutForm.expected_return} onChange={e => setSignOutForm(f => ({ ...f, expected_return: e.target.value }))} />
             </div>
 
             {/* Notes */}
@@ -1003,14 +1036,14 @@ export function StoreroomPage() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">WO / REQ Number *</label>
-                <input style={inp} placeholder="WO-2050" value={reqForm.woReq} onChange={e => setReqForm(f => ({ ...f, woReq: e.target.value }))} />
+                <input style={inp} placeholder="WO-2050" value={reqForm.work_order} onChange={e => setReqForm(f => ({ ...f, work_order: e.target.value }))} />
               </div>
             </div>
 
             <div>
               <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Priority</label>
               <div className="flex gap-2">
-                {(['High', 'Medium', 'Low'] as Priority[]).map(p => {
+                {(['High', 'Medium', 'Low'] as StockPriority[]).map(p => {
                   const ps = PRIORITY_STYLE[p]
                   return (
                     <button
@@ -1035,8 +1068,8 @@ export function StoreroomPage() {
                 style={{ ...inp, resize: 'none' }}
                 rows={3}
                 placeholder="e.g. LED Bulb 18W × 10, PVC Conduit 20mm × 3, Teflon Tape × 2"
-                value={reqForm.items}
-                onChange={e => setReqForm(f => ({ ...f, items: e.target.value }))}
+                value={reqForm.items_description}
+                onChange={e => setReqForm(f => ({ ...f, items_description: e.target.value }))}
               />
             </div>
 
@@ -1107,7 +1140,7 @@ function ItemForm({
         </div>
         <div>
           <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Min Level</label>
-          <input type="number" min={0} style={inp} value={form.minLevel} onChange={e => setForm(f => ({ ...f, minLevel: parseInt(e.target.value) || 0 }))} />
+          <input type="number" min={0} style={inp} value={form.min_level} onChange={e => setForm(f => ({ ...f, min_level: parseInt(e.target.value) || 0 }))} />
         </div>
       </div>
 

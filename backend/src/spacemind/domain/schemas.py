@@ -11,11 +11,17 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from spacemind.core.constants import (
+    IncidentSeverity,
+    IncidentStatus,
+    ItemCategory,
+    MedicalItemCategory,
     PhaseStatus,
     RequestType,
+    RequisitionStatus,
     ResponsiblePartyType,
     RiskLevel,
     TenureType,
+    TransactionStatus,
 )
 
 
@@ -130,3 +136,184 @@ class DecompositionSummary(BaseModel):
 class HistoryResponse(BaseModel):
     items: List[DecompositionSummary]
     total: int
+
+
+# ─── Inventory schemas ────────────────────────────────────────────────────────
+
+class InventoryItemCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    code: str = Field(..., min_length=1, max_length=50)
+    category: ItemCategory
+    quantity: float = Field(default=0, ge=0)
+    unit: str = Field(default="units", max_length=20)
+    min_level: float = Field(default=0, ge=0)
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InventoryItemUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[ItemCategory] = None
+    quantity: Optional[float] = Field(default=None, ge=0)
+    unit: Optional[str] = None
+    min_level: Optional[float] = Field(default=None, ge=0)
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InventoryItemOut(BaseModel):
+    id: str
+    name: str
+    code: str
+    category: str
+    quantity: float
+    unit: str
+    min_level: float
+    location: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TransactionCreate(BaseModel):
+    item_id: str
+    quantity: float = Field(..., gt=0)
+    borrower: str = Field(..., min_length=1)
+    department: Optional[str] = None
+    work_order: Optional[str] = None
+    expected_return: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class TransactionOut(BaseModel):
+    id: str
+    item_id: str
+    item_name: str
+    item_code: str
+    quantity: float
+    borrower: str
+    department: Optional[str]
+    work_order: Optional[str]
+    date_out: datetime
+    expected_return: Optional[datetime]
+    date_returned: Optional[datetime]
+    status: str
+    notes: Optional[str]
+
+    model_config = {"from_attributes": True}
+
+
+class RequisitionCreate(BaseModel):
+    requester: str = Field(..., min_length=1)
+    role: Optional[str] = None
+    department: Optional[str] = None
+    work_order: Optional[str] = None
+    priority: str = Field(default="Medium", pattern="^(High|Medium|Low)$")
+    items_description: str = Field(..., min_length=1)
+    notes: Optional[str] = None
+
+
+class RequisitionStatusUpdate(BaseModel):
+    status: RequisitionStatus
+
+
+class RequisitionOut(BaseModel):
+    id: str
+    requester: str
+    role: Optional[str]
+    department: Optional[str]
+    work_order: Optional[str]
+    priority: str
+    items_description: str
+    status: str
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InventoryAnalytics(BaseModel):
+    total_items: int
+    low_stock_count: int
+    critical_count: int
+    outstanding_transactions: int
+    pending_requisitions: int
+
+
+# ─── Medical schemas ──────────────────────────────────────────────────────────
+
+class MedicalItemCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    category: MedicalItemCategory
+    quantity: int = Field(default=0, ge=0)
+    unit: str = Field(default="units", max_length=20)
+    min_level: int = Field(default=0, ge=0)
+    expiry_date: Optional[str] = None   # ISO date string YYYY-MM-DD
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class MedicalItemUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[MedicalItemCategory] = None
+    quantity: Optional[int] = Field(default=None, ge=0)
+    unit: Optional[str] = None
+    min_level: Optional[int] = Field(default=None, ge=0)
+    expiry_date: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class MedicalItemOut(BaseModel):
+    id: str
+    name: str
+    category: str
+    quantity: int
+    unit: str
+    min_level: int
+    expiry_date: Optional[str]
+    location: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class IncidentCreate(BaseModel):
+    incident_type: str = Field(..., min_length=1)
+    severity: IncidentSeverity
+    employee_name: Optional[str] = None
+    department: Optional[str] = None
+    description: str = Field(..., min_length=1)
+    treatment: Optional[str] = None
+
+
+class IncidentStatusUpdate(BaseModel):
+    status: IncidentStatus
+
+
+class IncidentOut(BaseModel):
+    id: str
+    incident_type: str
+    severity: str
+    employee_name: Optional[str]
+    department: Optional[str]
+    description: str
+    treatment: Optional[str]
+    status: str
+    reported_at: datetime
+    resolved_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
+class MedicalAnalytics(BaseModel):
+    total_items: int
+    low_stock_count: int
+    expiring_soon_count: int
+    open_incidents: int
+    critical_incidents: int

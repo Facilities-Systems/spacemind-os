@@ -16,6 +16,8 @@ from spacemind.api.router_analytics import router as analytics_router
 from spacemind.api.router_decompose import router as decompose_router
 from spacemind.api.router_export import router as export_router
 from spacemind.api.router_history import router as history_router
+from spacemind.api.router_inventory import router as inventory_router
+from spacemind.api.router_medical import router as medical_router
 from spacemind.api.routes import router as utility_router
 from spacemind.core.config import settings
 from spacemind.core.logging import log
@@ -141,6 +143,8 @@ app.include_router(decompose_router)
 app.include_router(history_router)
 app.include_router(export_router)
 app.include_router(analytics_router)
+app.include_router(inventory_router)
+app.include_router(medical_router)
 
 
 @app.get("/", include_in_schema=False)

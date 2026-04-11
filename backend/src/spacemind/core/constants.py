@@ -94,6 +94,53 @@ KNOWN_LOCATIONS = {
     },
 }
 
+# ─── Inventory constants ──────────────────────────────────────────────────────
+
+class ItemCategory(str, Enum):
+    ELECTRICAL = "Electrical"
+    PLUMBING = "Plumbing"
+    CARPENTRY = "Carpentry"
+    PAINTING = "Painting"
+    HYGIENE = "Hygiene"
+    TOOLS = "Tools"
+    OTHER = "Other"
+
+
+class TransactionStatus(str, Enum):
+    OUTSTANDING = "Outstanding"
+    RETURNED = "Returned"
+    OVERDUE = "Overdue"
+
+
+class RequisitionStatus(str, Enum):
+    PENDING = "Pending"
+    APPROVED = "Approved"
+    ISSUED = "Issued"
+    REJECTED = "Rejected"
+
+
+# ─── Medical constants ────────────────────────────────────────────────────────
+
+class MedicalItemCategory(str, Enum):
+    FIRST_AID = "First Aid"
+    MEDICATION = "Medication"
+    EQUIPMENT = "Equipment"
+    PPE = "PPE"
+
+
+class IncidentSeverity(str, Enum):
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+    CRITICAL = "Critical"
+
+
+class IncidentStatus(str, Enum):
+    OPEN = "Open"
+    RESOLVED = "Resolved"
+    REFERRED = "Referred"
+
+
 # Keyword → RequestType mapping for fast classification
 REQUEST_KEYWORDS: dict[str, list[str]] = {
     RequestType.OFFICE_MOVE: [

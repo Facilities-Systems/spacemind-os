@@ -4,7 +4,7 @@ Persistence layer — keeps every decomposition in history and manages users.
 """
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -74,3 +74,116 @@ class DecompositionRecord(Base):
 
     def __repr__(self) -> str:
         return f"<Decomposition id={self.id} type={self.request_type} loc={self.location_id}>"
+
+
+# ─── Inventory ────────────────────────────────────────────────────────────────
+
+class InventoryItem(Base):
+    """Storeroom stock — tools, materials, consumables, and assets."""
+
+    __tablename__ = "inventory_items"
+
+    id = Column(String(36), primary_key=True)
+    name = Column(String(200), nullable=False)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    category = Column(String(50), nullable=False, index=True)   # ItemCategory values
+    quantity = Column(Float, nullable=False, default=0)
+    unit = Column(String(20), nullable=False, default="units")
+    min_level = Column(Float, nullable=False, default=0)
+    location = Column(String(200), nullable=True)               # shelf / bin reference
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<InventoryItem code={self.code} qty={self.quantity}>"
+
+
+class InventoryTransaction(Base):
+    """Sign-out and return log for storeroom items."""
+
+    __tablename__ = "inventory_transactions"
+
+    id = Column(String(36), primary_key=True)
+    item_id = Column(String(36), nullable=False, index=True)    # soft FK → inventory_items.id
+    item_name = Column(String(200), nullable=False)             # denormalized for fast listing
+    item_code = Column(String(50), nullable=False)
+    quantity = Column(Float, nullable=False)
+    borrower = Column(String(200), nullable=False)
+    department = Column(String(100), nullable=True)
+    work_order = Column(String(100), nullable=True)
+    date_out = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expected_return = Column(DateTime, nullable=True)
+    date_returned = Column(DateTime, nullable=True)
+    status = Column(String(20), default="Outstanding", nullable=False, index=True)
+    notes = Column(Text, nullable=True)
+    created_by = Column(String(36), nullable=True)              # soft FK → users.id
+
+    def __repr__(self) -> str:
+        return f"<InventoryTransaction item={self.item_code} borrower={self.borrower} status={self.status}>"
+
+
+class InventoryRequisition(Base):
+    """Purchase / issue requisition raised by staff."""
+
+    __tablename__ = "inventory_requisitions"
+
+    id = Column(String(36), primary_key=True)
+    requester = Column(String(200), nullable=False)
+    role = Column(String(100), nullable=True)
+    department = Column(String(100), nullable=True)
+    work_order = Column(String(100), nullable=True)
+    priority = Column(String(20), default="Medium", nullable=False)
+    items_description = Column(Text, nullable=False)
+    status = Column(String(20), default="Pending", nullable=False, index=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_by = Column(String(36), nullable=True)              # soft FK → users.id
+
+    def __repr__(self) -> str:
+        return f"<InventoryRequisition id={self.id} status={self.status} requester={self.requester}>"
+
+
+# ─── Medical ──────────────────────────────────────────────────────────────────
+
+class MedicalItem(Base):
+    """Medical supply or equipment in the first-aid / medical room."""
+
+    __tablename__ = "medical_items"
+
+    id = Column(String(36), primary_key=True)
+    name = Column(String(200), nullable=False)
+    category = Column(String(50), nullable=False, index=True)   # MedicalItemCategory values
+    quantity = Column(Integer, nullable=False, default=0)
+    unit = Column(String(20), nullable=False, default="units")
+    min_level = Column(Integer, nullable=False, default=0)
+    expiry_date = Column(Date, nullable=True)
+    location = Column(String(200), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<MedicalItem name={self.name} qty={self.quantity}>"
+
+
+class MedicalIncident(Base):
+    """Workplace medical incident or first-aid event."""
+
+    __tablename__ = "medical_incidents"
+
+    id = Column(String(36), primary_key=True)
+    incident_type = Column(String(100), nullable=False)
+    severity = Column(String(20), nullable=False, index=True)   # IncidentSeverity values
+    employee_name = Column(String(200), nullable=True)
+    department = Column(String(100), nullable=True)
+    description = Column(Text, nullable=False)
+    treatment = Column(Text, nullable=True)
+    status = Column(String(20), default="Open", nullable=False, index=True)
+    reported_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    created_by = Column(String(36), nullable=True)              # soft FK → users.id
+
+    def __repr__(self) -> str:
+        return f"<MedicalIncident type={self.incident_type} severity={self.severity} status={self.status}>"
