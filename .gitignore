@@ -42,7 +42,6 @@ yarn-error.log*
 pnpm-debug.log*
 .pnp
 .pnp.js
-package-lock.json
 
 # ── Frontend build output ─────────────────────────────────────────
 frontend/dist/
