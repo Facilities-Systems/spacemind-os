@@ -95,12 +95,28 @@ jobs:
       - name: Set up Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
+      - name: Check Fly app exists
+        id: fly_check
+        run: |
+          if flyctl status -a spacemind-os-api > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️  Fly app 'spacemind-os-api' not provisioned yet — skipping deploy."
+            echo "   Run once to provision:  flyctl apps create spacemind-os-api --region jnb"
+            echo "   Then set secrets:       flyctl secrets set ANTHROPIC_API_KEY=... SECRET_KEY=... DATABASE_URL=..."
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
       - name: Deploy API to Fly.io  # migrations run via release_command in fly.toml
+        if: steps.fly_check.outputs.exists == 'true'
         run: flyctl deploy --remote-only --image ghcr.io/${{ github.repository }}/api:latest
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Verify deployment health
+        if: steps.fly_check.outputs.exists == 'true'
         run: |
           sleep 10
           STATUS=$(curl -sf https://spacemind-os-api.fly.dev/api/v1/health | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
