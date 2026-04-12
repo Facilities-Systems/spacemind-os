@@ -1,0 +1,17 @@
+# SpaceMind OS — Railway monorepo configuration
+# Docs: https://docs.railway.com/reference/config-as-code
+#
+# This file is the project-level config. Each service also has its own
+# railway.toml in its subdirectory (backend/ and frontend/).
+#
+# First-time setup:
+#   1. railway login
+#   2. railway link          (link this directory to your Railway project)
+#   3. Set secrets in Railway dashboard (or: railway variables set KEY=value)
+#      Required: ANTHROPIC_API_KEY, SECRET_KEY, DATABASE_URL
+#      Frontend: API_URL=https://<your-api-service>.railway.app
+#   4. Push to main → auto-deploy via GitHub integration
+#
+# Manual redeploy:
+#   railway up --service spacemind-os-api
+#   railway up --service spacemind-os-frontend
