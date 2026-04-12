@@ -2,6 +2,7 @@
 SpaceMind OS — Database Setup
 SQLite in dev (zero config), PostgreSQL in production.
 """
+import traceback
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
@@ -12,11 +13,20 @@ from spacemind.domain.models import Base
 
 
 # Build engine — SQLite gets WAL mode for better concurrency
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
-    echo=settings.app_debug,
-)
+# Wrapped in try/except so a bad DATABASE_URL produces a clear log message
+# rather than a silent import-time crash that swallows the traceback.
+try:
+    engine = create_engine(
+        settings.database_url,
+        connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
+        echo=settings.app_debug,
+    )
+except Exception:
+    log.critical(
+        "DATABASE ENGINE CREATION FAILED — check DATABASE_URL.\n"
+        + traceback.format_exc()
+    )
+    raise
 
 if "sqlite" in settings.database_url:
     @event.listens_for(engine, "connect")

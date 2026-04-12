@@ -3,6 +3,7 @@ SpaceMind OS — FastAPI Application Entry Point
 """
 import os
 import time
+import traceback
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -62,16 +63,37 @@ def _init_sentry() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info(f"Starting {settings.app_name} v{settings.app_version} [{settings.app_env}]")
-    # Ensure data/ directory exists for SQLite dev database
-    if "sqlite" in settings.database_url and ":memory:" not in settings.database_url:
-        db_path = settings.database_url.replace("sqlite:///", "")
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    # Production safety check
-    if settings.is_production and settings.secret_key == "change-me-in-production-use-openssl-rand-hex-32":
-        raise RuntimeError("SECRET_KEY must be changed before running in production.")
-    _init_sentry()
-    init_db()
+    try:
+        # Ensure data/ directory exists for SQLite dev database
+        if "sqlite" in settings.database_url and ":memory:" not in settings.database_url:
+            db_path = settings.database_url.replace("sqlite:///", "")
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            log.info(f"SQLite data directory ensured: {Path(db_path).parent}")
+
+        # Production safety check
+        if settings.is_production and settings.secret_key == "change-me-in-production-use-openssl-rand-hex-32":
+            raise RuntimeError("SECRET_KEY must be changed before running in production.")
+
+        # Sentry
+        log.info("Initialising Sentry...")
+        _init_sentry()
+        log.info("Sentry step complete.")
+
+        # Database
+        log.info("Initialising database...")
+        init_db()
+        log.info("Database initialisation complete.")
+
+        log.info(f"{settings.app_name} startup complete — ready to serve requests.")
+    except Exception:
+        log.critical(
+            "STARTUP FAILED — unhandled exception during lifespan startup:\n"
+            + traceback.format_exc()
+        )
+        raise
+
     yield
+
     log.info("SpaceMind OS shutting down.")
 
 
