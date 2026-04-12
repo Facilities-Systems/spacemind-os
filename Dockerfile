@@ -49,7 +49,8 @@ COPY --from=frontend-builder /frontend/dist ./static/
 
 # Startup script (handles Railway's $PORT cleanly)
 COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Strip Windows CRLF line endings and make executable
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 # Persistent data directory (SQLite fallback, uploads)
 RUN mkdir -p /app/data && chown -R spacemind:spacemind /app

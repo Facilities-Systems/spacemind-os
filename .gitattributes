@@ -1,0 +1,4 @@
+# Force LF for all files that run on Linux
+*.sh    text eol=lf
+*.py    text eol=lf
+Dockerfile  text eol=lf
