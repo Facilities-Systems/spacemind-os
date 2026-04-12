@@ -214,3 +214,31 @@ class Supplier(Base):
 
     def __repr__(self) -> str:
         return f"<Supplier name={self.name} active={self.is_active}>"
+
+
+# ─── Floor Plans ──────────────────────────────────────────────────────────────
+
+class FloorPlan(Base):
+    """
+    One row per building + floor combination.
+    Stores space statistics; SVG rendering is handled client-side.
+    """
+
+    __tablename__ = "floor_plans"
+
+    id             = Column(String(36), primary_key=True)
+    building_id    = Column(String(20),  nullable=False, index=True)
+    building_name  = Column(String(200), nullable=False)
+    floor_name     = Column(String(100), nullable=False)
+    floor_order    = Column(Integer,     nullable=False, default=0)
+    total_area_sqm = Column(Integer,     nullable=False, default=800)
+    capacity_pax   = Column(Integer,     nullable=False, default=60)
+    total_desks    = Column(Integer,     nullable=False, default=0)
+    occupied_desks = Column(Integer,     nullable=False, default=0)
+    meeting_rooms  = Column(Integer,     nullable=False, default=0)
+    status         = Column(String(30),  nullable=False, default="active")  # active | under_renovation | inactive
+    created_at     = Column(DateTime,    default=lambda: datetime.now(UTC), nullable=False)
+    updated_at     = Column(DateTime,    default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<FloorPlan {self.building_id} / {self.floor_name}>"

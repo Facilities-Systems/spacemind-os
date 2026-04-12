@@ -3,6 +3,8 @@ import type {
   ComplianceAnalytics,
   DecompositionRequest,
   DecompositionResult,
+  FloorPlan,
+  FloorPlanPayload,
   HistoryResponse,
   IncidentStatus,
   InsightsSummary,
@@ -267,6 +269,29 @@ export const api = {
 
   deleteSupplier: async (id: string): Promise<void> => {
     await http.delete(`/suppliers/${id}`)
+  },
+
+  // ── Floor Plans ─────────────────────────────────────────────────────────────
+
+  getFloorPlans: async (buildingId?: string): Promise<FloorPlan[]> => {
+    const { data } = await http.get<FloorPlan[]>('/floor-plans', {
+      params: buildingId ? { building_id: buildingId } : undefined,
+    })
+    return data
+  },
+
+  createFloorPlan: async (payload: FloorPlanPayload): Promise<FloorPlan> => {
+    const { data } = await http.post<FloorPlan>('/floor-plans', payload)
+    return data
+  },
+
+  updateFloorPlan: async (id: string, payload: Partial<FloorPlanPayload>): Promise<FloorPlan> => {
+    const { data } = await http.patch<FloorPlan>(`/floor-plans/${id}`, payload)
+    return data
+  },
+
+  deleteFloorPlan: async (id: string): Promise<void> => {
+    await http.delete(`/floor-plans/${id}`)
   },
 
   // ── Insights ────────────────────────────────────────────────────────────────

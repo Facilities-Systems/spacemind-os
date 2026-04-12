@@ -312,6 +312,39 @@ export interface SupplierPayload {
   notes?: string
 }
 
+// ─── Floor Plans ──────────────────────────────────────────────────────────────
+
+export type FloorStatus = 'active' | 'under_renovation' | 'inactive'
+
+export interface FloorPlan {
+  id: string
+  building_id: string
+  building_name: string
+  floor_name: string
+  floor_order: number
+  total_area_sqm: number
+  capacity_pax: number
+  total_desks: number
+  occupied_desks: number
+  meeting_rooms: number
+  status: FloorStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface FloorPlanPayload {
+  building_id: string
+  building_name: string
+  floor_name: string
+  floor_order?: number
+  total_area_sqm?: number
+  capacity_pax?: number
+  total_desks?: number
+  occupied_desks?: number
+  meeting_rooms?: number
+  status?: FloorStatus
+}
+
 // ─── Insights Summary ─────────────────────────────────────────────────────────
 
 export interface InsightsKpi {

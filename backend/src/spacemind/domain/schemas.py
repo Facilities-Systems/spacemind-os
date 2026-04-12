@@ -355,3 +355,48 @@ class SupplierOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ─── Floor Plan schemas ───────────────────────────────────────────────────────
+
+class FloorPlanCreate(BaseModel):
+    building_id:    str = Field(..., min_length=1, max_length=20)
+    building_name:  str = Field(..., min_length=1, max_length=200)
+    floor_name:     str = Field(..., min_length=1, max_length=100)
+    floor_order:    int = Field(default=0, ge=0)
+    total_area_sqm: int = Field(default=800, ge=0)
+    capacity_pax:   int = Field(default=60,  ge=0)
+    total_desks:    int = Field(default=0,   ge=0)
+    occupied_desks: int = Field(default=0,   ge=0)
+    meeting_rooms:  int = Field(default=0,   ge=0)
+    status:         str = Field(default="active")
+
+
+class FloorPlanUpdate(BaseModel):
+    building_name:  Optional[str] = Field(default=None, min_length=1, max_length=200)
+    floor_name:     Optional[str] = Field(default=None, min_length=1, max_length=100)
+    floor_order:    Optional[int] = Field(default=None, ge=0)
+    total_area_sqm: Optional[int] = Field(default=None, ge=0)
+    capacity_pax:   Optional[int] = Field(default=None, ge=0)
+    total_desks:    Optional[int] = Field(default=None, ge=0)
+    occupied_desks: Optional[int] = Field(default=None, ge=0)
+    meeting_rooms:  Optional[int] = Field(default=None, ge=0)
+    status:         Optional[str] = None
+
+
+class FloorPlanOut(BaseModel):
+    id:             str
+    building_id:    str
+    building_name:  str
+    floor_name:     str
+    floor_order:    int
+    total_area_sqm: int
+    capacity_pax:   int
+    total_desks:    int
+    occupied_desks: int
+    meeting_rooms:  int
+    status:         str
+    created_at:     datetime
+    updated_at:     datetime
+
+    model_config = {"from_attributes": True}

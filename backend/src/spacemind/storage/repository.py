@@ -14,6 +14,7 @@ from spacemind.core.exceptions import StorageError
 from spacemind.core.logging import log
 from spacemind.domain.models import (
     DecompositionRecord,
+    FloorPlan,
     InventoryItem,
     InventoryRequisition,
     InventoryTransaction,
@@ -24,6 +25,8 @@ from spacemind.domain.models import (
 from spacemind.domain.schemas import (
     DecompositionResult,
     DecompositionSummary,
+    FloorPlanCreate,
+    FloorPlanUpdate,
     IncidentCreate,
     IncidentStatusUpdate,
     InventoryItemCreate,
@@ -679,6 +682,59 @@ class SupplierRepository:
             return False
         try:
             self.db.delete(supplier)
+            self.db.commit()
+            return True
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+class FloorPlanRepository:
+    """CRUD for floor plan records."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def list_floor_plans(self, building_id: Optional[str] = None) -> List[FloorPlan]:
+        q = self.db.query(FloorPlan)
+        if building_id:
+            q = q.filter(FloorPlan.building_id == building_id)
+        return q.order_by(FloorPlan.building_id, FloorPlan.floor_order).all()
+
+    def get_floor_plan(self, floor_plan_id: str) -> Optional[FloorPlan]:
+        return self.db.query(FloorPlan).filter(FloorPlan.id == floor_plan_id).first()
+
+    def create_floor_plan(self, data: FloorPlanCreate) -> FloorPlan:
+        import uuid
+        fp = FloorPlan(id=str(uuid.uuid4()), **data.model_dump())
+        self.db.add(fp)
+        try:
+            self.db.commit()
+            self.db.refresh(fp)
+            return fp
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def update_floor_plan(self, floor_plan_id: str, data: FloorPlanUpdate) -> Optional[FloorPlan]:
+        fp = self.get_floor_plan(floor_plan_id)
+        if not fp:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(fp, field, value)
+        try:
+            self.db.commit()
+            self.db.refresh(fp)
+            return fp
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def delete_floor_plan(self, floor_plan_id: str) -> bool:
+        fp = self.get_floor_plan(floor_plan_id)
+        if not fp:
+            return False
+        try:
+            self.db.delete(fp)
             self.db.commit()
             return True
         except SQLAlchemyError as e:

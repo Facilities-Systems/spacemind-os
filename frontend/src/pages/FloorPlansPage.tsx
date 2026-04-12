@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Download, LayoutGrid, Maximize2, RefreshCw } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Header } from '../components/layout/Header'
+import { api } from '../api/client'
+import type { FloorPlan as FloorPlanData } from '../types'
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Fallback data (used while loading or if API is unavailable) ───────────────
 
-const BUILDINGS = [
+const FALLBACK_BUILDINGS = [
   { id: 'fp1', name: 'FP1 HQ — Durban',   floors: ['Ground Floor', 'Level 1', 'Level 2', 'Level 3', 'Rooftop'] },
   { id: 'fp2', name: 'FP2 Office Park',   floors: ['Ground Floor', 'Level 1', 'Level 2'] },
   { id: 'lnd', name: 'London UK',          floors: ['Ground Floor', 'Level 1'] },
@@ -12,19 +15,7 @@ const BUILDINGS = [
   { id: 'lag', name: 'Lagos NG',            floors: ['Ground Floor'] },
 ]
 
-const LEGEND = [
-  { color: '#1e3a5f',             border: '#6366f1', label: 'Open Office / Workstations' },
-  { color: 'rgba(0,128,128,0.4)', border: '#008080', label: 'Meeting Rooms' },
-  { color: 'rgba(99,102,241,0.3)',border: '#6366f1', label: 'Executive / Private Offices' },
-  { color: 'rgba(16,185,129,0.3)',border: '#10b981', label: 'Breakout / Lounge Areas' },
-  { color: 'rgba(245,158,11,0.3)',border: '#f59e0b', label: 'Facilities / Storeroom' },
-  { color: 'rgba(239,68,68,0.25)',border: '#ef4444', label: 'Server Room / IT' },
-  { color: 'rgba(156,163,175,0.2)',border: '#6b7280',label: 'Amenities (Bathrooms / Kitchen)' },
-]
-
-// ─── Space stats per floor ────────────────────────────────────────────────────
-
-const STATS: Record<string, { area: number; desks: number; occupied: number; rooms: number; capacity: number }> = {
+const FALLBACK_STATS: Record<string, { area: number; desks: number; occupied: number; rooms: number; capacity: number }> = {
   'fp1-Ground Floor': { area: 1840, desks: 0,   occupied: 0,   rooms: 4,  capacity: 120 },
   'fp1-Level 1':      { area: 2100, desks: 96,  occupied: 72,  rooms: 8,  capacity: 200 },
   'fp1-Level 2':      { area: 2100, desks: 104, occupied: 88,  rooms: 6,  capacity: 200 },
@@ -35,9 +26,36 @@ const STATS: Record<string, { area: number; desks: number; occupied: number; roo
   'fp2-Level 2':      { area: 1400, desks: 68,  occupied: 44,  rooms: 4,  capacity: 120 },
 }
 
-function getStats(buildingId: string, floor: string) {
-  return STATS[`${buildingId}-${floor}`] ?? { area: 800, desks: 24, occupied: 16, rooms: 3, capacity: 60 }
+function fallbackStats(buildingId: string, floor: string) {
+  return FALLBACK_STATS[`${buildingId}-${floor}`] ?? { area: 800, desks: 24, occupied: 16, rooms: 3, capacity: 60 }
 }
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+
+function buildingsFromFloorPlans(fps: FloorPlanData[]) {
+  const map = new Map<string, { id: string; name: string; floors: FloorPlanData[] }>()
+  for (const fp of fps) {
+    if (!map.has(fp.building_id)) {
+      map.set(fp.building_id, { id: fp.building_id, name: fp.building_name, floors: [] })
+    }
+    map.get(fp.building_id)!.floors.push(fp)
+  }
+  // Sort floors by floor_order within each building
+  for (const b of map.values()) {
+    b.floors.sort((a, b) => a.floor_order - b.floor_order)
+  }
+  return Array.from(map.values())
+}
+
+const LEGEND = [
+  { color: '#1e3a5f',             border: '#6366f1', label: 'Open Office / Workstations' },
+  { color: 'rgba(0,128,128,0.4)', border: '#008080', label: 'Meeting Rooms' },
+  { color: 'rgba(99,102,241,0.3)',border: '#6366f1', label: 'Executive / Private Offices' },
+  { color: 'rgba(16,185,129,0.3)',border: '#10b981', label: 'Breakout / Lounge Areas' },
+  { color: 'rgba(245,158,11,0.3)',border: '#f59e0b', label: 'Facilities / Storeroom' },
+  { color: 'rgba(239,68,68,0.25)',border: '#ef4444', label: 'Server Room / IT' },
+  { color: 'rgba(156,163,175,0.2)',border: '#6b7280',label: 'Amenities (Bathrooms / Kitchen)' },
+]
 
 // ─── SVG Floor Plan ────────────────────────────────────────────────────────────
 // A representative office floor plan as an inline SVG.
@@ -263,7 +281,7 @@ function RooftopPlan() {
   )
 }
 
-function FloorPlan({ variant }: { variant: FloorVariant }) {
+function FloorPlanSvg({ variant }: { variant: FloorVariant }) {
   if (variant === 'ground')  return <GroundPlan />
   if (variant === 'rooftop') return <RooftopPlan />
   return <OfficePlan />
@@ -276,10 +294,37 @@ export function FloorPlansPage() {
   const [floorIdx, setFloorIdx]       = useState(1)  // default Level 1
   const [fullscreen, setFullscreen]   = useState(false)
 
-  const building = BUILDINGS[buildingIdx]
-  const floor    = building.floors[floorIdx] ?? building.floors[0]
-  const stats    = getStats(building.id, floor)
-  const variant  = floorVariant(floor)
+  const { data: floorPlansData, refetch } = useQuery({
+    queryKey: ['floor-plans'],
+    queryFn: () => api.getFloorPlans(),
+    staleTime: 60_000,
+  })
+
+  // Derive buildings list from API data, fall back to hardcoded constants
+  const buildings = useMemo(() => {
+    if (floorPlansData && floorPlansData.length > 0) {
+      return buildingsFromFloorPlans(floorPlansData).map(b => ({
+        id: b.id,
+        name: b.name,
+        // floor names for the selector
+        floors: b.floors.map(f => f.floor_name),
+        // floor plan records keyed by floor name
+        floorMap: Object.fromEntries(b.floors.map(f => [f.floor_name, f])),
+      }))
+    }
+    return FALLBACK_BUILDINGS.map(b => ({ ...b, floorMap: {} as Record<string, FloorPlanData> }))
+  }, [floorPlansData])
+
+  const building  = buildings[buildingIdx] ?? buildings[0]
+  const floorName = building.floors[floorIdx] ?? building.floors[0]
+  const liveFloor = building.floorMap[floorName]
+
+  // Stats: prefer live API data, fall back to hardcoded table
+  const stats = liveFloor
+    ? { area: liveFloor.total_area_sqm, desks: liveFloor.total_desks, occupied: liveFloor.occupied_desks, rooms: liveFloor.meeting_rooms, capacity: liveFloor.capacity_pax }
+    : fallbackStats(building.id, floorName)
+
+  const variant   = floorVariant(floorName)
   const occupancy = stats.desks > 0 ? Math.round((stats.occupied / stats.desks) * 100) : 0
 
   function handleBuildingChange(idx: number) {
@@ -297,7 +342,7 @@ export function FloorPlansPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Building selector */}
           <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: '#1e3a5f' }}>
-            {BUILDINGS.map((b, i) => (
+            {buildings.map((b, i) => (
               <button
                 key={b.id}
                 onClick={() => handleBuildingChange(i)}
@@ -314,7 +359,7 @@ export function FloorPlansPage() {
 
           <div className="flex items-center gap-2 ml-auto">
             <button
-              onClick={() => setFloorIdx(f => f)}
+              onClick={() => refetch()}
               className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
               title="Refresh"
             >
@@ -359,6 +404,9 @@ export function FloorPlansPage() {
                     }
                   >
                     {f}
+                    {building.floorMap[f]?.status === 'under_renovation' && (
+                      <span className="ml-2 text-xs text-amber-400">(Renovation)</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -455,13 +503,13 @@ export function FloorPlansPage() {
                 style={{ backgroundColor: 'rgba(0,128,128,0.1)', borderColor: 'rgba(0,128,128,0.25)' }}
               >
                 <p className="text-xs font-bold text-white uppercase tracking-widest">
-                  {building.name} — {floor}
+                  {building.name} — {floorName}
                 </p>
                 <p className="text-xs text-gray-500 font-mono">Scale 1:200 · Not to precise scale</p>
               </div>
 
               <div className="p-2">
-                <FloorPlan variant={variant} />
+                <FloorPlanSvg variant={variant} />
               </div>
             </div>
 
