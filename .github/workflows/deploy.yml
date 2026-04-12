@@ -61,8 +61,9 @@ jobs:
   # The root Dockerfile builds React then bakes it into the Python image.
   # FastAPI serves /assets/* and falls back to index.html for all SPA routes.
   #
-  # Required secret:
-  #   RAILWAY_TOKEN — project token: Railway dashboard → Settings → Tokens
+  # Required secret:    RAILWAY_TOKEN       — project token from Railway dashboard → Settings → Tokens
+  # Required variable:  RAILWAY_SERVICE_NAME — the exact service name in your Railway project
+  #                     (GitHub → repo Settings → Secrets and variables → Variables)
   deploy:
     name: Deploy to Railway
     runs-on: ubuntu-latest
@@ -76,7 +77,7 @@ jobs:
         run: npm install -g @railway/cli@latest
 
       - name: Deploy to Railway
-        run: railway up --detach
+        run: railway up --detach --service "${{ vars.RAILWAY_SERVICE_NAME }}"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
