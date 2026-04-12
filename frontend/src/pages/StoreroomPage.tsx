@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   Camera,
@@ -9,8 +10,11 @@ import {
   Package,
   PackageOpen,
   Plus,
+  Printer,
+  QrCode,
   Search,
   Shield,
+  ShieldCheck,
   Trash2,
   Pencil,
   X,
@@ -19,6 +23,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
+import { api } from '../api/client'
 import {
   useStoreroom,
   CATEGORIES,
@@ -92,7 +97,7 @@ function rankOf(rate: number) {
 
 // ─── Tab type ─────────────────────────────────────────────────────────────────
 
-type Tab = 'inventory' | 'signout' | 'cameras' | 'requisitions'
+type Tab = 'inventory' | 'signout' | 'compliance' | 'cameras' | 'requisitions'
 
 // ─── Camera data ─────────────────────────────────────────────────────────────
 
@@ -146,6 +151,22 @@ export function StoreroomPage() {
   // ── Sign-out tab state ──
   const [txStatus, setTxStatus] = useState<TxStatus | 'All'>('All')
   const [txDept, setTxDept]     = useState('All')
+
+  // ── QR modal ──
+  const [qrItemId, setQrItemId] = useState<string | null>(null)
+  const { data: qrData, isFetching: qrLoading } = useQuery({
+    queryKey: ['inventory', 'qr', qrItemId],
+    queryFn:  () => api.getItemQr(qrItemId!),
+    enabled:  !!qrItemId,
+    staleTime: Infinity,
+  })
+
+  // ── Compliance data ──
+  const { data: compliance } = useQuery({
+    queryKey: ['inventory', 'compliance'],
+    queryFn:  api.getComplianceAnalytics,
+    staleTime: 60_000,
+  })
 
   // ── Modals ──
   const [addItemOpen,  setAddItemOpen]  = useState(false)
@@ -292,10 +313,21 @@ export function StoreroomPage() {
     setFormError('')
   }
 
+  // ── Reorder analytics from the analytics query (hook doesn't expose yet — derive from items) ──
+  const reorderItems = items.filter(i => i.min_level > 0 && i.quantity <= i.min_level)
+    .map(i => ({
+      item_id: i.id, item_code: i.code, item_name: i.name,
+      current_qty: i.quantity, min_level: i.min_level,
+      deficit: Math.max(0, i.min_level - i.quantity),
+      suggested_reorder_qty: Math.max(1, (i.min_level * 2) - i.quantity),
+    }))
+  const criticalReorder = reorderItems.filter(r => r.current_qty === 0)
+
   // ── Tab config ──
   const tabs: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: 'inventory',    label: 'Inventory',    icon: <Boxes className="h-4 w-4" />,        badge: criticalCount + lowCount || undefined },
     { key: 'signout',      label: 'Sign-Out',     icon: <ClipboardList className="h-4 w-4" />, badge: overdue || undefined },
+    { key: 'compliance',   label: 'Compliance',   icon: <ShieldCheck className="h-4 w-4" /> },
     { key: 'cameras',      label: 'Cameras',      icon: <Camera className="h-4 w-4" /> },
     { key: 'requisitions', label: 'Requisitions', icon: <FileText className="h-4 w-4" />,     badge: pendingReqs || undefined },
   ]
@@ -411,16 +443,36 @@ export function StoreroomPage() {
               </button>
             </div>
 
-            {/* Alert banner */}
-            {(lowCount > 0 || criticalCount > 0) && (
+            {/* Critical reorder banner */}
+            {criticalReorder.length > 0 && (
+              <div
+                className="flex flex-wrap items-start gap-3 px-4 py-3 rounded-xl text-sm"
+                style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)' }}
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#f87171' }} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-xs mb-1.5" style={{ color: '#f87171' }}>
+                    {criticalReorder.length} item{criticalReorder.length > 1 ? 's' : ''} at zero stock — immediate reorder required
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {criticalReorder.map(r => (
+                      <span key={r.item_id} className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5' }}>
+                        {r.item_code} · reorder {r.suggested_reorder_qty} {items.find(i => i.id === r.item_id)?.unit ?? 'units'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Low stock banner */}
+            {lowCount > 0 && criticalReorder.length === 0 && (
               <div
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
-                style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}
+                style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', color: '#fcd34d' }}
               >
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                {criticalCount > 0 && <span>{criticalCount} item(s) at zero stock</span>}
-                {criticalCount > 0 && lowCount > 0 && <span className="text-gray-600">·</span>}
-                {lowCount > 0 && <span>{lowCount} item(s) below minimum level</span>}
+                <span>{lowCount} item{lowCount > 1 ? 's' : ''} below minimum level — review stock soon</span>
               </div>
             )}
 
@@ -490,6 +542,13 @@ export function StoreroomPage() {
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setQrItemId(item.id)}
+                                className="text-gray-500 hover:text-teal-300 transition-colors"
+                                title="Show QR code"
+                              >
+                                <QrCode className="h-3.5 w-3.5" />
+                              </button>
                               <button
                                 onClick={() => openEditItem(item)}
                                 className="text-gray-500 hover:text-teal-300 transition-colors"
@@ -672,6 +731,120 @@ export function StoreroomPage() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
+            COMPLIANCE TAB
+        ═══════════════════════════════════════════════════════════════ */}
+        {tab === 'compliance' && (
+          <div className="space-y-5">
+
+            {/* KPI strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { label: 'Compliance Rate',    value: compliance ? `${compliance.compliance_rate}%` : '—',  color: (compliance?.compliance_rate ?? 100) >= 90 ? '#6ee7b7' : '#f87171' },
+                { label: 'Total Sign-Outs',    value: compliance?.total_transactions ?? '—', color: '#2dd4bf' },
+                { label: 'Outstanding',        value: compliance?.outstanding ?? '—',        color: '#fcd34d' },
+                { label: 'Overdue',            value: compliance?.overdue ?? '—',            color: compliance?.overdue ? '#f87171' : '#6ee7b7' },
+              ].map(k => (
+                <div key={k.label} className="rounded-xl p-4 border-2" style={{ backgroundColor: '#1e3a5f', borderColor: '#008080' }}>
+                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">{k.label}</p>
+                  <p className="text-2xl font-extrabold" style={{ color: k.color }}>{k.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Compliance gauge */}
+            {compliance && (
+              <div className="rounded-xl p-5 border-2" style={{ backgroundColor: '#1e3a5f', borderColor: '#008080' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#2dd4bf' }}>Overall Return Compliance</p>
+                  <span className="text-sm font-extrabold" style={{ color: compliance.compliance_rate >= 90 ? '#6ee7b7' : compliance.compliance_rate >= 70 ? '#fcd34d' : '#f87171' }}>
+                    {compliance.compliance_rate}%
+                  </span>
+                </div>
+                <div className="w-full rounded-full h-3" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                  <div
+                    className="h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${compliance.compliance_rate}%`,
+                      backgroundColor: compliance.compliance_rate >= 90 ? '#10b981' : compliance.compliance_rate >= 70 ? '#f59e0b' : '#ef4444',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Department scorecard */}
+            {compliance && compliance.by_department.length > 0 && (
+              <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#008080' }}>
+                <div className="px-4 py-3" style={{ backgroundColor: 'rgba(0,128,128,0.15)' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#2dd4bf' }}>Department Scorecard</p>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'rgba(0,128,128,0.08)' }}>
+                      {['Department', 'Total', 'Returned', 'Outstanding', 'Overdue', 'Rate'].map(h => (
+                        <th key={h} className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2dd4bf' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compliance.by_department.map((d, i) => (
+                      <tr key={d.department} className="border-t" style={{ borderColor: 'rgba(0,128,128,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.5)' }}>
+                        <td className="px-4 py-2.5 text-white font-medium">{d.department}</td>
+                        <td className="px-4 py-2.5 text-gray-400">{d.total}</td>
+                        <td className="px-4 py-2.5" style={{ color: '#6ee7b7' }}>{d.returned}</td>
+                        <td className="px-4 py-2.5" style={{ color: '#fcd34d' }}>{d.outstanding}</td>
+                        <td className="px-4 py-2.5" style={{ color: d.overdue > 0 ? '#f87171' : '#6ee7b7' }}>{d.overdue}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: d.compliance_rate >= 90 ? 'rgba(16,185,129,0.2)' : d.compliance_rate >= 70 ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)',
+                              color: d.compliance_rate >= 90 ? '#6ee7b7' : d.compliance_rate >= 70 ? '#fcd34d' : '#f87171' }}
+                          >
+                            {d.compliance_rate}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Outstanding borrowers */}
+            {compliance && compliance.top_outstanding_borrowers.length > 0 && (
+              <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#008080' }}>
+                <div className="px-4 py-3" style={{ backgroundColor: 'rgba(0,128,128,0.15)' }}>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#2dd4bf' }}>Outstanding Borrowers</p>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'rgba(0,128,128,0.08)' }}>
+                      {['Borrower', 'Department', 'Items Outstanding'].map(h => (
+                        <th key={h} className="text-left px-4 py-2 text-xs font-bold uppercase tracking-wider" style={{ color: '#2dd4bf' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compliance.top_outstanding_borrowers.map((b, i) => (
+                      <tr key={b.borrower} className="border-t" style={{ borderColor: 'rgba(0,128,128,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.5)' }}>
+                        <td className="px-4 py-2.5 text-white font-medium">{b.borrower}</td>
+                        <td className="px-4 py-2.5 text-gray-400">{b.department ?? '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="font-bold" style={{ color: '#fcd34d' }}>{b.outstanding}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!compliance && (
+              <div className="text-center py-12 text-gray-500 text-sm">Loading compliance data…</div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
             CAMERAS TAB
         ═══════════════════════════════════════════════════════════════ */}
         {tab === 'cameras' && (
@@ -846,6 +1019,41 @@ export function StoreroomPage() {
       {/* ════════════════════════════════════════════════════════════════
           MODALS
       ════════════════════════════════════════════════════════════════ */}
+
+      {/* QR Code */}
+      {qrItemId && (
+        <Modal title="Item QR Code" onClose={() => setQrItemId(null)}>
+          {qrLoading && <p className="text-center text-gray-400 py-8 text-sm">Generating QR…</p>}
+          {qrData && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="p-3 rounded-xl bg-white">
+                <img
+                  src={`data:image/png;base64,${qrData.qr_base64}`}
+                  alt={`QR for ${qrData.item_name}`}
+                  className="w-48 h-48"
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-white font-bold">{qrData.item_name}</p>
+                <p className="font-mono text-xs mt-1" style={{ color: '#2dd4bf' }}>{qrData.item_code}</p>
+              </div>
+              <button
+                onClick={() => {
+                  const a = document.createElement('a')
+                  a.href = `data:image/png;base64,${qrData.qr_base64}`
+                  a.download = `qr-${qrData.item_code}.png`
+                  a.click()
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all w-full justify-center"
+                style={{ backgroundColor: '#008080', color: '#fff' }}
+              >
+                <Printer className="h-4 w-4" />
+                Download / Print QR
+              </button>
+            </div>
+          )}
+        </Modal>
+      )}
 
       {/* Add Item */}
       {addItemOpen && (

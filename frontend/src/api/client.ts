@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type {
+  ComplianceAnalytics,
   DecompositionRequest,
   DecompositionResult,
   HistoryResponse,
@@ -7,6 +8,7 @@ import type {
   InsightsSummary,
   InventoryAnalytics,
   InventoryItem,
+  ItemQr,
   Location,
   MedicalAnalytics,
   MedicalIncident,
@@ -187,6 +189,16 @@ export const api = {
 
   getInventoryAnalytics: async (): Promise<InventoryAnalytics> => {
     const { data } = await http.get<InventoryAnalytics>('/inventory/analytics')
+    return data
+  },
+
+  getItemQr: async (itemId: string): Promise<ItemQr> => {
+    const { data } = await http.get<ItemQr>(`/inventory/items/${itemId}/qr`)
+    return data
+  },
+
+  getComplianceAnalytics: async (): Promise<ComplianceAnalytics> => {
+    const { data } = await http.get<ComplianceAnalytics>('/inventory/compliance')
     return data
   },
 

@@ -198,12 +198,52 @@ export interface Requisition {
   updated_at: string
 }
 
+export interface ReorderRecommendation {
+  item_id: string
+  item_name: string
+  item_code: string
+  current_qty: number
+  min_level: number
+  deficit: number
+  suggested_reorder_qty: number
+}
+
 export interface InventoryAnalytics {
   total_items: number
   low_stock_count: number
   critical_count: number
   outstanding_transactions: number
   pending_requisitions: number
+  low_stock_items: ReorderRecommendation[]
+  critical_items: ReorderRecommendation[]
+  reorder_recommendations: ReorderRecommendation[]
+}
+
+export interface DeptCompliance {
+  department: string
+  total: number
+  returned: number
+  outstanding: number
+  overdue: number
+  compliance_rate: number
+}
+
+export interface ComplianceAnalytics {
+  total_transactions: number
+  returned: number
+  outstanding: number
+  overdue: number
+  compliance_rate: number
+  by_department: DeptCompliance[]
+  top_outstanding_borrowers: Array<{ borrower: string; department: string | null; outstanding: number }>
+}
+
+export interface ItemQr {
+  item_id: string
+  item_code: string
+  item_name: string
+  qr_base64: string
+  payload: string
 }
 
 // ─── Medical ──────────────────────────────────────────────────────────────────

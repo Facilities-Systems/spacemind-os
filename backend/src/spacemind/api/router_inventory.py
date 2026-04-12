@@ -163,6 +163,38 @@ def update_requisition_status(
     return req
 
 
+# ─── QR Code ──────────────────────────────────────────────────────────────────
+
+@router.get("/items/{item_id}/qr", summary="Generate QR code for an inventory item")
+def get_item_qr(
+    item_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    svc = InventoryService(db)
+    data = svc._repo.get_item_qr_data(item_id)
+    if data is None:
+        # qrcode library not installed — return helpful error
+        raise HTTPException(
+            status_code=501,
+            detail="QR generation unavailable. Install qrcode[pil]: pip install qrcode[pil]",
+        )
+    if "item_id" not in data:
+        raise HTTPException(status_code=404, detail="Item not found.")
+    return data
+
+
+# ─── Compliance ────────────────────────────────────────────────────────────────
+
+@router.get("/compliance", summary="Sign-out compliance analytics")
+def get_compliance(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    svc = InventoryService(db)
+    return svc._repo.get_compliance_analytics()
+
+
 # ─── Analytics ────────────────────────────────────────────────────────────────
 
 @router.get("/analytics", response_model=InventoryAnalytics, summary="Inventory dashboard stats")

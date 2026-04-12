@@ -372,20 +372,106 @@ class InventoryRepository:
         from sqlalchemy import func
         total = self.db.query(func.count(InventoryItem.id)).scalar() or 0
         all_items = self.db.query(InventoryItem).all()
-        low_stock = sum(1 for i in all_items if 0 < i.quantity <= i.min_level)
-        critical = sum(1 for i in all_items if i.quantity == 0)
+        low_stock_items = [
+            i for i in all_items if i.min_level > 0 and 0 < i.quantity <= i.min_level
+        ]
+        critical_items = [i for i in all_items if i.quantity == 0]
         outstanding = self.db.query(func.count(InventoryTransaction.id)).filter(
             InventoryTransaction.status == "Outstanding"
         ).scalar() or 0
         pending_reqs = self.db.query(func.count(InventoryRequisition.id)).filter(
             InventoryRequisition.status == "Pending"
         ).scalar() or 0
+
+        def _reorder(item: InventoryItem) -> dict:
+            suggested = max(1, (item.min_level * 2) - item.quantity)
+            return {
+                "item_id":      item.id,
+                "item_name":    item.name,
+                "item_code":    item.code,
+                "current_qty":  item.quantity,
+                "min_level":    item.min_level,
+                "deficit":      max(0, item.min_level - item.quantity),
+                "suggested_reorder_qty": suggested,
+            }
+
         return {
-            "total_items": total,
-            "low_stock_count": low_stock,
-            "critical_count": critical,
+            "total_items":             total,
+            "low_stock_count":         len(low_stock_items),
+            "critical_count":          len(critical_items),
             "outstanding_transactions": outstanding,
-            "pending_requisitions": pending_reqs,
+            "pending_requisitions":    pending_reqs,
+            "low_stock_items":         [_reorder(i) for i in low_stock_items],
+            "critical_items":          [_reorder(i) for i in critical_items],
+            "reorder_recommendations": [_reorder(i) for i in critical_items + low_stock_items],
+        }
+
+    def get_compliance_analytics(self) -> dict:
+        """Sign-out compliance: return rates, overdue items, department breakdown."""
+        from sqlalchemy import func
+        all_tx = self.db.query(InventoryTransaction).all()
+        total       = len(all_tx)
+        returned    = sum(1 for t in all_tx if t.status == "Returned")
+        outstanding = [t for t in all_tx if t.status == "Outstanding"]
+        overdue     = [t for t in all_tx if t.status == "Overdue"]
+
+        rate = round((returned / total * 100), 1) if total > 0 else 100.0
+
+        dept_map: dict[str, dict] = {}
+        for t in all_tx:
+            dept = t.department or "Unknown"
+            d = dept_map.setdefault(dept, {"department": dept, "total": 0, "returned": 0, "outstanding": 0, "overdue": 0})
+            d["total"] += 1
+            if t.status == "Returned":    d["returned"] += 1
+            if t.status == "Outstanding": d["outstanding"] += 1
+            if t.status == "Overdue":     d["overdue"] += 1
+        for d in dept_map.values():
+            d["compliance_rate"] = round(d["returned"] / d["total"] * 100, 1) if d["total"] > 0 else 100.0
+
+        # Top borrowers with outstanding items
+        borrower_map: dict[str, dict] = {}
+        for t in outstanding + overdue:
+            b = borrower_map.setdefault(t.borrower, {"borrower": t.borrower, "department": t.department, "outstanding": 0})
+            b["outstanding"] += 1
+
+        return {
+            "total_transactions":    total,
+            "returned":              returned,
+            "outstanding":           len(outstanding),
+            "overdue":               len(overdue),
+            "compliance_rate":       rate,
+            "by_department":         sorted(dept_map.values(), key=lambda x: x["compliance_rate"]),
+            "top_outstanding_borrowers": sorted(borrower_map.values(), key=lambda x: -x["outstanding"])[:10],
+        }
+
+    def get_item_qr_data(self, item_id: str) -> Optional[dict]:
+        """Return base64-encoded QR PNG + item metadata for the given item."""
+        import base64
+        import io
+        try:
+            import qrcode
+            from qrcode.image.pure import PyPNGImage
+        except ImportError:
+            return None
+
+        item = self.get_item(item_id)
+        if not item:
+            return None
+
+        payload = f"spacemind://item/{item.id}?code={item.code}&name={item.name}"
+        qr = qrcode.QRCode(version=1, box_size=8, border=3)
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(image_factory=PyPNGImage)
+        buf = io.BytesIO()
+        img.save(buf)
+        qr_b64 = base64.b64encode(buf.getvalue()).decode()
+        return {
+            "item_id":   item.id,
+            "item_code": item.code,
+            "item_name": item.name,
+            "qr_base64": qr_b64,
+            "payload":   payload,
         }
 
 
