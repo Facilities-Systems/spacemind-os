@@ -24,6 +24,7 @@ import { ConciergePage } from './pages/ConciergePage'
 import { KPIPage } from './pages/KPIPage'
 import { NewsTrainingPage } from './pages/NewsTrainingPage'
 import { SmartInsightsPage } from './pages/SmartInsightsPage'
+import { AdminPage } from './pages/AdminPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="/kpi" element={<KPIPage />} />
               <Route path="/news-training" element={<NewsTrainingPage />} />
               <Route path="/smart-insights" element={<SmartInsightsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

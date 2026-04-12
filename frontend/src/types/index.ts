@@ -312,6 +312,42 @@ export interface SupplierPayload {
   notes?: string
 }
 
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export interface AdminUserSummary {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface AuditEntry {
+  id: string
+  created_at: string
+  user_email: string | null
+  action: string
+  resource_type: string
+  resource_id: string | null
+  details: Record<string, unknown> | null
+}
+
+export interface AuditLogResponse {
+  items: AuditEntry[]
+  total: number
+}
+
+export interface AdminDashboard {
+  total_users: number
+  active_users: number
+  total_decompositions: number
+  decompositions_this_week: number
+  decompositions_this_month: number
+  users: AdminUserSummary[]
+  recent_audit: AuditEntry[]
+}
+
 // ─── Floor Plans ──────────────────────────────────────────────────────────────
 
 export type FloorStatus = 'active' | 'under_renovation' | 'inactive'

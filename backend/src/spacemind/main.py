@@ -17,6 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from spacemind.api.auth import router as auth_router
+from spacemind.api.router_admin import router as admin_router
 from spacemind.api.router_analytics import router as analytics_router
 from spacemind.api.router_decompose import router as decompose_router
 from spacemind.api.router_export import router as export_router
@@ -177,6 +178,7 @@ async def logging_middleware(request: Request, call_next) -> Response:
 
 # ─── API Routes ───────────────────────────────────────────────────────────────
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(utility_router)
 app.include_router(decompose_router)
 app.include_router(history_router)

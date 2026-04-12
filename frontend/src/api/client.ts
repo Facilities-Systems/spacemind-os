@@ -1,5 +1,7 @@
 import axios from 'axios'
 import type {
+  AdminDashboard,
+  AuditLogResponse,
   ComplianceAnalytics,
   DecompositionRequest,
   DecompositionResult,
@@ -20,6 +22,7 @@ import type {
   SignOutTx,
   Supplier,
   SupplierPayload,
+  UserOut,
 } from '../types'
 
 const TOKEN_KEY = 'sm_access_token'
@@ -269,6 +272,31 @@ export const api = {
 
   deleteSupplier: async (id: string): Promise<void> => {
     await http.delete(`/suppliers/${id}`)
+  },
+
+  // ── Admin ───────────────────────────────────────────────────────────────────
+
+  getAdminDashboard: async (): Promise<AdminDashboard> => {
+    const { data } = await http.get<AdminDashboard>('/admin/dashboard')
+    return data
+  },
+
+  getAuditLog: async (params?: {
+    limit?: number; offset?: number
+    action?: string; user_email?: string; resource_type?: string
+  }): Promise<AuditLogResponse> => {
+    const { data } = await http.get<AuditLogResponse>('/admin/audit-log', { params })
+    return data
+  },
+
+  updateUser: async (userId: string, payload: { role?: string; is_active?: boolean; full_name?: string }): Promise<UserOut> => {
+    const { data } = await http.patch<UserOut>(`/auth/users/${userId}`, payload)
+    return data
+  },
+
+  deactivateUser: async (userId: string): Promise<UserOut> => {
+    const { data } = await http.post<UserOut>(`/auth/users/${userId}/deactivate`)
+    return data
   },
 
   // ── Floor Plans ─────────────────────────────────────────────────────────────

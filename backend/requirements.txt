@@ -16,6 +16,9 @@ alembic>=1.13.0
 psycopg2-binary>=2.9.9
 aiosqlite>=0.20.0        # SQLite async (dev fallback)
 
+# Static file serving (StaticFiles requires aiofiles)
+aiofiles>=23.2.1
+
 # Templates
 pyyaml>=6.0.1
 
@@ -41,7 +44,8 @@ python-multipart>=0.0.9   # Required by FastAPI for OAuth2PasswordRequestForm (l
 reportlab>=4.2.0
 
 # Phase 2 — Multi-Agent / Vector Memory
-chromadb>=0.5.0           # Vector memory store (optional — enable_vector_memory=true)
+# chromadb>=0.5.0         # Vector memory store — enable when ENABLE_VECTOR_MEMORY=true
+                           # Excluded from default build: adds ~400MB to the image
 
 # Phase 3 — Observability
 prometheus-fastapi-instrumentator>=6.1.0
