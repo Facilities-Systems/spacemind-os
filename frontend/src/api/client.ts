@@ -16,6 +16,8 @@ import type {
   Requisition,
   ReqStatus,
   SignOutTx,
+  Supplier,
+  SupplierPayload,
 } from '../types'
 
 const TOKEN_KEY = 'sm_access_token'
@@ -244,6 +246,27 @@ export const api = {
   getMedicalAnalytics: async (): Promise<MedicalAnalytics> => {
     const { data } = await http.get<MedicalAnalytics>('/medical/analytics')
     return data
+  },
+
+  // ── Suppliers ────────────────────────────────────────────────────────────────
+
+  getSuppliers: async (activeOnly = false): Promise<Supplier[]> => {
+    const { data } = await http.get<Supplier[]>('/suppliers', { params: { active_only: activeOnly } })
+    return data
+  },
+
+  createSupplier: async (payload: SupplierPayload): Promise<Supplier> => {
+    const { data } = await http.post<Supplier>('/suppliers', payload)
+    return data
+  },
+
+  updateSupplier: async (id: string, payload: Partial<SupplierPayload> & { is_active?: boolean }): Promise<Supplier> => {
+    const { data } = await http.patch<Supplier>(`/suppliers/${id}`, payload)
+    return data
+  },
+
+  deleteSupplier: async (id: string): Promise<void> => {
+    await http.delete(`/suppliers/${id}`)
   },
 
   // ── Insights ────────────────────────────────────────────────────────────────

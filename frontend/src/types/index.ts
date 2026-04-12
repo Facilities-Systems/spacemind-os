@@ -287,6 +287,31 @@ export interface MedicalAnalytics {
   critical_incidents: number
 }
 
+// ─── Suppliers ────────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: string
+  name: string
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  category: string | null
+  lead_time_days: number | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface SupplierPayload {
+  name: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  category?: string
+  lead_time_days?: number
+  notes?: string
+}
+
 // ─── Insights Summary ─────────────────────────────────────────────────────────
 
 export interface InsightsKpi {

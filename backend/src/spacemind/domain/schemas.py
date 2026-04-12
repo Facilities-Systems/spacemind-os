@@ -317,3 +317,41 @@ class MedicalAnalytics(BaseModel):
     expiring_soon_count: int
     open_incidents: int
     critical_incidents: int
+
+
+# ─── Supplier schemas ─────────────────────────────────────────────────────────
+
+class SupplierCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    category: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+
+
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    category: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class SupplierOut(BaseModel):
+    id: str
+    name: str
+    contact_name: Optional[str]
+    contact_email: Optional[str]
+    contact_phone: Optional[str]
+    category: Optional[str]
+    lead_time_days: Optional[int]
+    notes: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

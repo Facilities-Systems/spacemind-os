@@ -38,7 +38,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id = Column(String(36), primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
     user_id = Column(String(36), nullable=True, index=True)   # None = system action
     user_email = Column(String(255), nullable=True)
     action = Column(String(64), nullable=False, index=True)   # e.g. "decomposition.created"
@@ -92,8 +92,10 @@ class InventoryItem(Base):
     min_level = Column(Float, nullable=False, default=0)
     location = Column(String(200), nullable=True)               # shelf / bin reference
     notes = Column(Text, nullable=True)
+    supplier_id   = Column(String(36), nullable=True)    # soft FK → suppliers.id
+    supplier_name = Column(String(200), nullable=True)   # denormalized for fast listing
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
     def __repr__(self) -> str:
         return f"<InventoryItem code={self.code} qty={self.quantity}>"
@@ -138,7 +140,7 @@ class InventoryRequisition(Base):
     status = Column(String(20), default="Pending", nullable=False, index=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
     created_by = Column(String(36), nullable=True)              # soft FK → users.id
 
     def __repr__(self) -> str:
@@ -162,7 +164,7 @@ class MedicalItem(Base):
     location = Column(String(200), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
 
     def __repr__(self) -> str:
         return f"<MedicalItem name={self.name} qty={self.quantity}>"
@@ -187,3 +189,28 @@ class MedicalIncident(Base):
 
     def __repr__(self) -> str:
         return f"<MedicalIncident type={self.incident_type} severity={self.severity} status={self.status}>"
+
+
+# ─── Suppliers ────────────────────────────────────────────────────────────────
+
+class Supplier(Base):
+    """
+    Supplier / vendor directory.
+    Linked to InventoryItem via soft FK (supplier_id + denormalised supplier_name).
+    """
+
+    __tablename__ = "suppliers"
+
+    id            = Column(String(36), primary_key=True)
+    name          = Column(String(200), unique=True, nullable=False, index=True)
+    contact_name  = Column(String(200), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(50),  nullable=True)
+    category      = Column(String(100), nullable=True)   # item categories they supply
+    lead_time_days = Column(Integer, nullable=True)
+    notes         = Column(Text, nullable=True)
+    is_active     = Column(Boolean, default=True, nullable=False)
+    created_at    = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Supplier name={self.name} active={self.is_active}>"

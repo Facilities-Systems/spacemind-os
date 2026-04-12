@@ -19,6 +19,7 @@ from spacemind.domain.models import (
     InventoryTransaction,
     MedicalIncident,
     MedicalItem,
+    Supplier,
 )
 from spacemind.domain.schemas import (
     DecompositionResult,
@@ -28,6 +29,8 @@ from spacemind.domain.schemas import (
     InventoryItemCreate,
     InventoryItemUpdate,
     MedicalItemCreate,
+    SupplierCreate,
+    SupplierUpdate,
     MedicalItemUpdate,
     RequisitionCreate,
     TransactionCreate,
@@ -614,3 +617,70 @@ class MedicalRepository:
             "open_incidents": open_incidents,
             "critical_incidents": critical_incidents,
         }
+
+
+# ─── Supplier Repository ──────────────────────────────────────────────────────
+
+class SupplierRepository:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def list_suppliers(self, active_only: bool = False) -> List[Supplier]:
+        q = self.db.query(Supplier)
+        if active_only:
+            q = q.filter(Supplier.is_active == True)  # noqa: E712
+        return q.order_by(Supplier.name).all()
+
+    def get_supplier(self, supplier_id: str) -> Optional[Supplier]:
+        return self.db.query(Supplier).filter(Supplier.id == supplier_id).first()
+
+    def get_supplier_by_name(self, name: str) -> Optional[Supplier]:
+        return self.db.query(Supplier).filter(Supplier.name == name).first()
+
+    def create_supplier(self, data: SupplierCreate) -> Supplier:
+        from uuid import uuid4
+        supplier = Supplier(
+            id=str(uuid4()),
+            name=data.name,
+            contact_name=data.contact_name,
+            contact_email=data.contact_email,
+            contact_phone=data.contact_phone,
+            category=data.category,
+            lead_time_days=data.lead_time_days,
+            notes=data.notes,
+            is_active=True,
+        )
+        try:
+            self.db.add(supplier)
+            self.db.commit()
+            self.db.refresh(supplier)
+            return supplier
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def update_supplier(self, supplier_id: str, data: SupplierUpdate) -> Optional[Supplier]:
+        supplier = self.get_supplier(supplier_id)
+        if not supplier:
+            return None
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(supplier, field, value)
+        try:
+            self.db.commit()
+            self.db.refresh(supplier)
+            return supplier
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def delete_supplier(self, supplier_id: str) -> bool:
+        supplier = self.get_supplier(supplier_id)
+        if not supplier:
+            return False
+        try:
+            self.db.delete(supplier)
+            self.db.commit()
+            return True
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e

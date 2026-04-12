@@ -20,6 +20,7 @@ from spacemind.api.router_history import router as history_router
 from spacemind.api.router_insights import router as insights_router
 from spacemind.api.router_inventory import router as inventory_router
 from spacemind.api.router_medical import router as medical_router
+from spacemind.api.router_suppliers import router as suppliers_router
 from spacemind.api.routes import router as utility_router
 from spacemind.core.config import settings
 from spacemind.core.logging import log
@@ -154,6 +155,7 @@ app.include_router(export_router)
 app.include_router(analytics_router)
 app.include_router(inventory_router)
 app.include_router(medical_router)
+app.include_router(suppliers_router)
 app.include_router(insights_router)
 
 

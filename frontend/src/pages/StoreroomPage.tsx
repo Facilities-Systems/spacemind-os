@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   Camera,
@@ -97,7 +97,7 @@ function rankOf(rate: number) {
 
 // ─── Tab type ─────────────────────────────────────────────────────────────────
 
-type Tab = 'inventory' | 'signout' | 'compliance' | 'cameras' | 'requisitions'
+type Tab = 'inventory' | 'signout' | 'compliance' | 'suppliers' | 'cameras' | 'requisitions'
 
 // ─── Camera data ─────────────────────────────────────────────────────────────
 
@@ -167,6 +167,71 @@ export function StoreroomPage() {
     queryFn:  api.getComplianceAnalytics,
     staleTime: 60_000,
   })
+
+  // ── Suppliers ──
+  const qc = useQueryClient()
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers'],
+    queryFn:  () => api.getSuppliers(),
+    staleTime: 60_000,
+  })
+  const [supplierForm, setSupplierForm] = useState({ name: '', contact_name: '', contact_email: '', contact_phone: '', category: '', lead_time_days: '', notes: '' })
+  const [editSupplier, setEditSupplier]   = useState<import('../types').Supplier | null>(null)
+  const [supplierError, setSupplierError] = useState('')
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false)
+
+  const invalidateSuppliers = () => qc.invalidateQueries({ queryKey: ['suppliers'] })
+
+  async function handleCreateSupplier() {
+    if (!supplierForm.name.trim()) { setSupplierError('Supplier name is required.'); return }
+    try {
+      await api.createSupplier({
+        name: supplierForm.name,
+        contact_name:   supplierForm.contact_name  || undefined,
+        contact_email:  supplierForm.contact_email || undefined,
+        contact_phone:  supplierForm.contact_phone || undefined,
+        category:       supplierForm.category      || undefined,
+        lead_time_days: supplierForm.lead_time_days ? parseInt(supplierForm.lead_time_days) : undefined,
+        notes:          supplierForm.notes         || undefined,
+      })
+      invalidateSuppliers()
+      setAddSupplierOpen(false)
+      setSupplierForm({ name: '', contact_name: '', contact_email: '', contact_phone: '', category: '', lead_time_days: '', notes: '' })
+      setSupplierError('')
+    } catch { setSupplierError('Name already exists or server error.') }
+  }
+
+  async function handleUpdateSupplier() {
+    if (!editSupplier) return
+    try {
+      await api.updateSupplier(editSupplier.id, {
+        name:           supplierForm.name           || undefined,
+        contact_name:   supplierForm.contact_name   || undefined,
+        contact_email:  supplierForm.contact_email  || undefined,
+        contact_phone:  supplierForm.contact_phone  || undefined,
+        category:       supplierForm.category       || undefined,
+        lead_time_days: supplierForm.lead_time_days ? parseInt(supplierForm.lead_time_days) : undefined,
+        notes:          supplierForm.notes          || undefined,
+      })
+      invalidateSuppliers()
+      setEditSupplier(null)
+      setSupplierError('')
+    } catch { setSupplierError('Update failed.') }
+  }
+
+  function openEditSupplier(s: import('../types').Supplier) {
+    setEditSupplier(s)
+    setSupplierForm({
+      name:           s.name,
+      contact_name:   s.contact_name  ?? '',
+      contact_email:  s.contact_email ?? '',
+      contact_phone:  s.contact_phone ?? '',
+      category:       s.category      ?? '',
+      lead_time_days: s.lead_time_days != null ? String(s.lead_time_days) : '',
+      notes:          s.notes         ?? '',
+    })
+    setSupplierError('')
+  }
 
   // ── Modals ──
   const [addItemOpen,  setAddItemOpen]  = useState(false)
@@ -328,6 +393,7 @@ export function StoreroomPage() {
     { key: 'inventory',    label: 'Inventory',    icon: <Boxes className="h-4 w-4" />,        badge: criticalCount + lowCount || undefined },
     { key: 'signout',      label: 'Sign-Out',     icon: <ClipboardList className="h-4 w-4" />, badge: overdue || undefined },
     { key: 'compliance',   label: 'Compliance',   icon: <ShieldCheck className="h-4 w-4" /> },
+    { key: 'suppliers',    label: 'Suppliers',    icon: <Package className="h-4 w-4" /> },
     { key: 'cameras',      label: 'Cameras',      icon: <Camera className="h-4 w-4" /> },
     { key: 'requisitions', label: 'Requisitions', icon: <FileText className="h-4 w-4" />,     badge: pendingReqs || undefined },
   ]
@@ -845,6 +911,84 @@ export function StoreroomPage() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════
+            SUPPLIERS TAB
+        ═══════════════════════════════════════════════════════════════ */}
+        {tab === 'suppliers' && (
+          <div className="space-y-4">
+
+            {/* Toolbar */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">
+                {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''} registered
+              </p>
+              <button
+                onClick={() => { setAddSupplierOpen(true); setSupplierError('') }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                style={{ backgroundColor: '#008080', color: '#fff' }}
+              >
+                <Plus className="h-4 w-4" />
+                Add Supplier
+              </button>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#008080' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'rgba(0,128,128,0.15)' }}>
+                      {['Name', 'Category', 'Contact', 'Email', 'Phone', 'Lead Time', 'Status', 'Actions'].map(h => (
+                        <th key={h} className="text-left px-3 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2dd4bf' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {suppliers.length === 0 ? (
+                      <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">No suppliers yet. Add your first supplier.</td></tr>
+                    ) : suppliers.map((s, i) => (
+                      <tr key={s.id} className="border-t transition-colors"
+                        style={{ borderColor: 'rgba(0,128,128,0.15)', backgroundColor: i % 2 === 0 ? '#1e3a5f' : 'rgba(30,58,95,0.5)' }}
+                      >
+                        <td className="px-3 py-2.5 text-white font-medium">{s.name}</td>
+                        <td className="px-3 py-2.5 text-gray-400 text-xs">{s.category ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-gray-400 text-xs">{s.contact_name ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-xs" style={{ color: s.contact_email ? '#2dd4bf' : '#4b5563' }}>{s.contact_email ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-gray-400 text-xs font-mono">{s.contact_phone ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-gray-400 text-xs">{s.lead_time_days != null ? `${s.lead_time_days}d` : '—'}</td>
+                        <td className="px-3 py-2.5">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={s.is_active
+                              ? { backgroundColor: 'rgba(16,185,129,0.2)', color: '#6ee7b7' }
+                              : { backgroundColor: 'rgba(107,114,128,0.2)', color: '#9ca3af' }
+                            }
+                          >
+                            {s.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => openEditSupplier(s)} className="text-gray-500 hover:text-teal-300 transition-colors" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => api.updateSupplier(s.id, { is_active: !s.is_active }).then(invalidateSuppliers)}
+                              className="text-gray-500 hover:text-yellow-400 transition-colors"
+                              title={s.is_active ? 'Deactivate' : 'Activate'}
+                            >
+                              <Shield className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
             CAMERAS TAB
         ═══════════════════════════════════════════════════════════════ */}
         {tab === 'cameras' && (
@@ -1019,6 +1163,46 @@ export function StoreroomPage() {
       {/* ════════════════════════════════════════════════════════════════
           MODALS
       ════════════════════════════════════════════════════════════════ */}
+
+      {/* Add Supplier */}
+      {addSupplierOpen && (
+        <Modal title="Add Supplier" onClose={() => { setAddSupplierOpen(false); setSupplierError('') }}>
+          <div className="space-y-3">
+            {(['name', 'contact_name', 'contact_email', 'contact_phone', 'category', 'lead_time_days', 'notes'] as const).map(f => (
+              <div key={f}>
+                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">{f.replace(/_/g, ' ')}</label>
+                <input style={inp} value={supplierForm[f]} onChange={e => setSupplierForm(p => ({ ...p, [f]: e.target.value }))}
+                  placeholder={f === 'lead_time_days' ? 'Days (e.g. 7)' : ''} type={f === 'lead_time_days' ? 'number' : 'text'} />
+              </div>
+            ))}
+            {supplierError && <p className="text-xs text-red-400">{supplierError}</p>}
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button onClick={handleCreateSupplier} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: '#008080', color: '#fff' }}>Save Supplier</button>
+            <button onClick={() => { setAddSupplierOpen(false); setSupplierError('') }} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white transition-colors">Cancel</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Supplier */}
+      {editSupplier && (
+        <Modal title={`Edit — ${editSupplier.name}`} onClose={() => { setEditSupplier(null); setSupplierError('') }}>
+          <div className="space-y-3">
+            {(['name', 'contact_name', 'contact_email', 'contact_phone', 'category', 'lead_time_days', 'notes'] as const).map(f => (
+              <div key={f}>
+                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">{f.replace(/_/g, ' ')}</label>
+                <input style={inp} value={supplierForm[f]} onChange={e => setSupplierForm(p => ({ ...p, [f]: e.target.value }))}
+                  placeholder={f === 'lead_time_days' ? 'Days (e.g. 7)' : ''} type={f === 'lead_time_days' ? 'number' : 'text'} />
+              </div>
+            ))}
+            {supplierError && <p className="text-xs text-red-400">{supplierError}</p>}
+          </div>
+          <div className="flex gap-3 mt-5">
+            <button onClick={handleUpdateSupplier} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ backgroundColor: '#008080', color: '#fff' }}>Update Supplier</button>
+            <button onClick={() => { setEditSupplier(null); setSupplierError('') }} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white transition-colors">Cancel</button>
+          </div>
+        </Modal>
+      )}
 
       {/* QR Code */}
       {qrItemId && (
