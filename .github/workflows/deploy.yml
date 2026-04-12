@@ -1,4 +1,4 @@
-name: CI / Deploy
+name: CI
 
 on:
   push:
@@ -6,10 +6,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "*.md"
-
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false   # Never cancel a running deploy
+  pull_request:
+    branches: [main]
 
 jobs:
   # ─── Backend tests ──────────────────────────────────────────────────────────
@@ -57,41 +55,7 @@ jobs:
         run: node_modules/.bin/tsc --noEmit
         working-directory: frontend
 
-  # ─── Deploy to Railway (single service) ─────────────────────────────────────
-  # The root Dockerfile builds React then bakes it into the Python image.
-  # FastAPI serves /assets/* and falls back to index.html for all SPA routes.
-  #
-  # Required secret:    RAILWAY_TOKEN       — project token from Railway dashboard → Settings → Tokens
-  # Required variable:  RAILWAY_SERVICE_NAME — the exact service name in your Railway project
-  #                     (GitHub → repo Settings → Secrets and variables → Variables)
-  deploy:
-    name: Deploy to Railway
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli@latest
-
-      - name: Deploy to Railway
-        run: railway up --detach --service '${{ vars.RAILWAY_SERVICE_NAME }}'
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-
-      - name: Verify deployment health
-        run: |
-          echo "Waiting 45s for Railway to build and route traffic..."
-          sleep 45
-          STATUS=$(curl -sf --retry 6 --retry-delay 10 \
-            ${{ vars.RAILWAY_APP_URL }}/api/v1/health \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null \
-            || echo "unreachable")
-          echo "Health: $STATUS"
-          [ "$STATUS" = "operational" ] || \
-            echo "⚠️  Health check inconclusive — Railway may still be starting. Check dashboard."
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+# Deployment is handled by Railway's native GitHub integration.
+# Railway watches the main branch, detects railway.toml + Dockerfile,
+# builds, runs migrations (startCommand), and deploys automatically.
+# No deploy job needed here.
