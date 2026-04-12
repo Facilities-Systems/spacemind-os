@@ -1,17 +1,30 @@
-# SpaceMind OS — Railway monorepo configuration
+# SpaceMind OS — Railway single-service configuration
+# One container serves both the FastAPI backend and the React SPA.
 # Docs: https://docs.railway.com/reference/config-as-code
 #
-# This file is the project-level config. Each service also has its own
-# railway.toml in its subdirectory (backend/ and frontend/).
-#
-# First-time setup:
-#   1. railway login
-#   2. railway link          (link this directory to your Railway project)
-#   3. Set secrets in Railway dashboard (or: railway variables set KEY=value)
-#      Required: ANTHROPIC_API_KEY, SECRET_KEY, DATABASE_URL
-#      Frontend: API_URL=https://<your-api-service>.railway.app
-#   4. Push to main → auto-deploy via GitHub integration
-#
-# Manual redeploy:
-#   railway up --service spacemind-os-api
-#   railway up --service spacemind-os-frontend
+# First-time setup in Railway dashboard:
+#   1. Create a new project → "Deploy from GitHub repo"
+#   2. Set root directory to "." (repo root) — Railway uses this Dockerfile
+#   3. Add a PostgreSQL plugin (Railway auto-injects DATABASE_URL)
+#   4. Set service variables:
+#        ANTHROPIC_API_KEY = sk-ant-api03-...
+#        SECRET_KEY        = <openssl rand -hex 32>
+#        APP_ENV           = production
+#        CORS_ORIGINS      = https://<your-service>.railway.app
+#   5. Push to main → auto-deploy
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Run DB migrations before switching traffic, then start the server.
+# Railway injects $PORT automatically.
+startCommand = "alembic upgrade head && uvicorn spacemind.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2 --log-level info --no-access-log"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[environments.production.deploy]
+numReplicas = 1

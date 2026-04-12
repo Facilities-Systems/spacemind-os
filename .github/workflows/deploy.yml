@@ -29,7 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
-        working-directory: .
 
       - name: Run tests
         run: python -m pytest tests/ -q --tb=short --no-header
@@ -58,12 +57,12 @@ jobs:
         run: node_modules/.bin/tsc --noEmit
         working-directory: frontend
 
-  # ─── Deploy to Railway ───────────────────────────────────────────────────────
-  # Railway also auto-deploys via GitHub integration when connected in the
-  # Railway dashboard — this job provides an explicit CI-gated deploy trigger.
+  # ─── Deploy to Railway (single service) ─────────────────────────────────────
+  # The root Dockerfile builds React then bakes it into the Python image.
+  # FastAPI serves /assets/* and falls back to index.html for all SPA routes.
   #
-  # Required secrets:
-  #   RAILWAY_TOKEN  — project token from Railway dashboard → Settings → Tokens
+  # Required secret:
+  #   RAILWAY_TOKEN — project token: Railway dashboard → Settings → Tokens
   deploy:
     name: Deploy to Railway
     runs-on: ubuntu-latest
@@ -76,26 +75,21 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli@latest
 
-      - name: Deploy API service
-        run: railway up --service spacemind-os-api --detach
-        working-directory: backend
+      - name: Deploy to Railway
+        run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Deploy Frontend service
-        run: railway up --service spacemind-os-frontend --detach
-        working-directory: frontend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: Verify API health (post-deploy)
+      - name: Verify deployment health
         run: |
-          echo "Waiting 30s for Railway to route traffic..."
-          sleep 30
-          STATUS=$(curl -sf --retry 5 --retry-delay 10 \
-            https://spacemind-os-api.railway.app/api/v1/health \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unreachable")
+          echo "Waiting 45s for Railway to build and route traffic..."
+          sleep 45
+          STATUS=$(curl -sf --retry 6 --retry-delay 10 \
+            ${{ vars.RAILWAY_APP_URL }}/api/v1/health \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null \
+            || echo "unreachable")
           echo "Health: $STATUS"
-          [ "$STATUS" = "operational" ] || echo "⚠️  Health check inconclusive — Railway may still be starting. Check dashboard."
+          [ "$STATUS" = "operational" ] || \
+            echo "⚠️  Health check inconclusive — Railway may still be starting. Check dashboard."
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

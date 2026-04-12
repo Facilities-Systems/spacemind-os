@@ -1,6 +1,7 @@
 """
 SpaceMind OS — FastAPI Application Entry Point
 """
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -8,6 +9,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -16,8 +19,8 @@ from spacemind.api.auth import router as auth_router
 from spacemind.api.router_analytics import router as analytics_router
 from spacemind.api.router_decompose import router as decompose_router
 from spacemind.api.router_export import router as export_router
-from spacemind.api.router_history import router as history_router
 from spacemind.api.router_floorplans import router as floorplans_router
+from spacemind.api.router_history import router as history_router
 from spacemind.api.router_insights import router as insights_router
 from spacemind.api.router_inventory import router as inventory_router
 from spacemind.api.router_medical import router as medical_router
@@ -103,6 +106,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
+# In single-service deployment (React served by FastAPI) CORS is irrelevant
+# because there's only one origin. This is kept for local dev where the Vite
+# dev server runs on a different port.
 if settings.is_production:
     _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 else:
@@ -147,7 +153,7 @@ async def logging_middleware(request: Request, call_next) -> Response:
     return response
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+# ─── API Routes ───────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(utility_router)
 app.include_router(decompose_router)
@@ -161,11 +167,34 @@ app.include_router(floorplans_router)
 app.include_router(insights_router)
 
 
-@app.get("/", include_in_schema=False)
-def root():
-    return {
-        "system": settings.app_name,
-        "version": settings.app_version,
-        "tagline": "The AI that thinks like a 30-year veteran Facilities Manager.",
-        "docs": "/docs",
-    }
+# ─── React SPA static files ───────────────────────────────────────────────────
+# STATIC_DIR is set to /app/static in the production Dockerfile.
+# In local dev (no build) this directory won't exist, so this block is skipped
+# and the Vite dev server handles the frontend on its own port.
+_static_dir = Path(os.environ.get("STATIC_DIR", "/app/static"))
+
+if _static_dir.exists():
+    # Vite outputs hashed JS/CSS bundles under /assets/
+    _assets_dir = _static_dir / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+
+    # Serve any other static files at the root level (favicon, manifest, etc.)
+    _index = _static_dir / "index.html"
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str) -> FileResponse:
+        """Return index.html for every non-API path so React Router handles navigation."""
+        return FileResponse(str(_index))
+
+    log.info(f"React SPA served from {_static_dir}")
+else:
+    # Dev mode: keep the JSON root for API introspection
+    @app.get("/", include_in_schema=False)
+    def root():
+        return {
+            "system": settings.app_name,
+            "version": settings.app_version,
+            "tagline": "The AI that thinks like a 30-year veteran Facilities Manager.",
+            "docs": "/docs",
+        }
