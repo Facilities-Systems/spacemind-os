@@ -81,6 +81,12 @@ export function ConciergePage() {
     <div className="flex flex-col h-full">
       <Header title="Concierge Services" subtitle="People & Wellness — Employee Assistance & Lifestyle Support" />
 
+      <div className="mx-4 md:mx-8 mt-3">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.3)' }}>
+          Demo Data — live concierge requests coming in Phase 3
+        </span>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
 
         {/* Stats */}

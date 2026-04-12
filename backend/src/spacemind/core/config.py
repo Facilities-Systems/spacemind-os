@@ -31,12 +31,21 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.2
 
     # Database
-    database_url: str = "sqlite:///./spacemind.db"
+    # Dev default: backend/data/spacemind.db (relative to working dir = backend/)
+    # Production: override with DATABASE_URL=postgresql://user:pass@host/spacemind
+    database_url: str = "sqlite:///./data/spacemind.db"
+    test_database_url: str = "sqlite:///:memory:"
 
     # Features
     enable_history: bool = True
     enable_vector_memory: bool = False
     enable_multi_agent: bool = False
+
+    # CORS
+    # Dev: explicit localhost origins instead of wildcard
+    # Prod: set CORS_ORIGINS=https://your-domain.com (comma-separated)
+    cors_dev_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
+    cors_origins: str = ""
 
     # Rate limiting
     decompose_rate_limit: str = "10/minute"

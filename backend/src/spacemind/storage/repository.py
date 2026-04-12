@@ -4,7 +4,7 @@ All database reads/writes go through here. Never touch ORM models outside this f
 Thread-safe task status updates via per-decomposition RLock (UFM pattern).
 """
 import threading
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -306,7 +306,7 @@ class InventoryRepository:
         if item:
             item.quantity += tx.quantity
         tx.status = "Returned"
-        tx.date_returned = datetime.utcnow()
+        tx.date_returned = datetime.now(UTC)
         try:
             self.db.commit()
             self.db.refresh(tx)
@@ -493,7 +493,7 @@ class MedicalRepository:
             return None
         incident.status = status
         if status in ("Resolved", "Referred"):
-            incident.resolved_at = datetime.utcnow()
+            incident.resolved_at = datetime.now(UTC)
         try:
             self.db.commit()
             self.db.refresh(incident)

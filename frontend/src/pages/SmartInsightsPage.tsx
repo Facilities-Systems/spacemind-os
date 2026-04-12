@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   LineChart,
   Line,
@@ -19,13 +20,15 @@ import {
   Zap,
 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
+import { api } from '../api/client'
+import type { InsightsKpi } from '../types'
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-const STRATEGIC_KPIS = [
-  { label: 'Inventory Health Score', value: '85.2%', trend: '↑', good: true },
-  { label: 'AI Recommendations',     value: '19 Active', trend: '→', good: true },
-  { label: 'Cost Optimisation',      value: 'R 125k',    trend: '↑', good: true },
-  { label: 'Data Quality Score',     value: '95.2%',     trend: '↑', good: true },
+// ─── Fallback KPIs shown while loading ───────────────────────────────────────
+const FALLBACK_KPIS: InsightsKpi[] = [
+  { label: 'Plan Compliance',  value: '—', description: 'Loading…', trend: 'up' },
+  { label: 'Active Incidents', value: '—', description: 'Loading…', trend: 'up' },
+  { label: 'Stock Health',     value: '—', description: 'Loading…', trend: 'up' },
+  { label: 'Execution Plans',  value: '—', description: 'Loading…', trend: 'up' },
 ]
 
 const HUMAN_CENTERED = [
@@ -128,6 +131,13 @@ export function SmartInsightsPage() {
   const [tab, setTab] = useState('dashboard')
   const [generated, setGenerated] = useState<string | null>(null)
 
+  const { data: insightsSummary } = useQuery({
+    queryKey: ['insights-summary'],
+    queryFn: api.getInsightsSummary,
+    staleTime: 60_000,
+  })
+  const kpis: InsightsKpi[] = insightsSummary?.kpis ?? FALLBACK_KPIS
+
   return (
     <div className="flex flex-col h-full">
       <Header
@@ -158,9 +168,9 @@ export function SmartInsightsPage() {
         {/* ── DASHBOARD TAB ─────────────────────────────────────────────── */}
         {tab === 'dashboard' && (
           <div className="space-y-5">
-            {/* Strategic KPIs */}
+            {/* Strategic KPIs — live data from /api/v1/insights/summary */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {STRATEGIC_KPIS.map(k => (
+              {kpis.map(k => (
                 <div
                   key={k.label}
                   className="rounded-xl p-4 border-2"
@@ -168,7 +178,7 @@ export function SmartInsightsPage() {
                 >
                   <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">{k.label}</p>
                   <p className="text-xl font-extrabold text-white">{k.value}</p>
-                  <p className="text-xs mt-1" style={{ color: k.good ? '#6ee7b7' : '#f87171' }}>{k.trend} vs last month</p>
+                  <p className="text-xs mt-1" style={{ color: k.trend === 'up' ? '#6ee7b7' : '#f87171' }}>{k.description}</p>
                 </div>
               ))}
             </div>

@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Layout } from './components/layout/Layout'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { LandingPage } from './pages/LandingPage'
 import { MethodologyPage } from './pages/MethodologyPage'
 import { PillarSystematicPage } from './pages/methodology/PillarSystematic'
@@ -35,6 +36,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
@@ -89,5 +91,6 @@ export default function App() {
         <ReactQueryDevtools initialIsOpen={false} />
       </AuthProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

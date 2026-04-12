@@ -4,6 +4,7 @@ SpaceMind OS — FastAPI Application Entry Point
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from spacemind.api.router_analytics import router as analytics_router
 from spacemind.api.router_decompose import router as decompose_router
 from spacemind.api.router_export import router as export_router
 from spacemind.api.router_history import router as history_router
+from spacemind.api.router_insights import router as insights_router
 from spacemind.api.router_inventory import router as inventory_router
 from spacemind.api.router_medical import router as medical_router
 from spacemind.api.routes import router as utility_router
@@ -55,6 +57,13 @@ def _init_sentry() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info(f"Starting {settings.app_name} v{settings.app_version} [{settings.app_env}]")
+    # Ensure data/ directory exists for SQLite dev database
+    if "sqlite" in settings.database_url and ":memory:" not in settings.database_url:
+        db_path = settings.database_url.replace("sqlite:///", "")
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    # Production safety check
+    if settings.is_production and settings.secret_key == "change-me-in-production-use-openssl-rand-hex-32":
+        raise RuntimeError("SECRET_KEY must be changed before running in production.")
     _init_sentry()
     init_db()
     yield
@@ -92,10 +101,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
-_cors_origins = (
-    ["*"] if not settings.is_production
-    else [o.strip() for o in getattr(settings, "cors_origins", "").split(",") if o.strip()]
-)
+if settings.is_production:
+    _cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+else:
+    _cors_origins = [o.strip() for o in settings.cors_dev_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -145,6 +154,7 @@ app.include_router(export_router)
 app.include_router(analytics_router)
 app.include_router(inventory_router)
 app.include_router(medical_router)
+app.include_router(insights_router)
 
 
 @app.get("/", include_in_schema=False)

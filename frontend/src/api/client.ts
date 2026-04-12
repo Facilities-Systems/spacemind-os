@@ -4,6 +4,7 @@ import type {
   DecompositionResult,
   HistoryResponse,
   IncidentStatus,
+  InsightsSummary,
   InventoryAnalytics,
   InventoryItem,
   Location,
@@ -230,6 +231,13 @@ export const api = {
 
   getMedicalAnalytics: async (): Promise<MedicalAnalytics> => {
     const { data } = await http.get<MedicalAnalytics>('/medical/analytics')
+    return data
+  },
+
+  // ── Insights ────────────────────────────────────────────────────────────────
+
+  getInsightsSummary: async (): Promise<InsightsSummary> => {
+    const { data } = await http.get<InsightsSummary>('/insights/summary')
     return data
   },
 }

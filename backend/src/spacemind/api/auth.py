@@ -6,7 +6,7 @@ Dependency: get_current_user — inject into any protected route.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -33,7 +33,13 @@ class UserRegister(BaseModel):
     email: EmailStr
     full_name: str
     password: str
-    role: str = "viewer"
+    role: str = "viewer"   # Callers cannot self-assign admin — enforced in the route
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    role: str | None = None
+    is_active: bool | None = None
 
 
 class UserOut(BaseModel):
@@ -65,7 +71,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     payload = data.copy()
-    payload["exp"] = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+    payload["exp"] = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
@@ -137,12 +143,16 @@ def register(body: UserRegister, db: Session = Depends(get_db)) -> User:
     if get_user_by_email(db, body.email):
         raise HTTPException(status_code=409, detail="A user with this email already exists.")
 
+    # Security: only admin can create admin accounts. Self-registration is limited to viewer/technician/facilities_manager.
+    safe_roles = {"viewer", "technician", "facilities_manager"}
+    assigned_role = body.role if body.role in safe_roles else "viewer"
+
     user = User(
         id=str(uuid4()),
         email=body.email,
         full_name=body.full_name,
         hashed_password=hash_password(body.password),
-        role=body.role,
+        role=assigned_role,
     )
     db.add(user)
     db.commit()
@@ -174,3 +184,56 @@ def login(
 @router.get("/me", response_model=UserOut, summary="Get current user profile")
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+# ─── User Management (admin only) ─────────────────────────────────────────────
+
+@router.get("/users", response_model=list[UserOut], summary="List all users (admin)")
+def list_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+) -> list[User]:
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+
+@router.patch("/users/{user_id}", response_model=UserOut, summary="Update user role or status (admin)")
+def update_user(
+    user_id: str,
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if body.full_name is not None:
+        user.full_name = body.full_name
+    if body.role is not None:
+        valid_roles = {"viewer", "technician", "facilities_manager", "admin"}
+        if body.role not in valid_roles:
+            raise HTTPException(status_code=422, detail=f"Invalid role. Must be one of: {valid_roles}")
+        user.role = body.role
+    if body.is_active is not None:
+        user.is_active = body.is_active
+    db.commit()
+    db.refresh(user)
+    log.info(f"Admin updated user {user.email}: role={user.role} active={user.is_active}")
+    return user
+
+
+@router.post("/users/{user_id}/deactivate", response_model=UserOut, summary="Deactivate a user account (admin)")
+def deactivate_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role("admin")),
+) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.id == current_admin.id:
+        raise HTTPException(status_code=400, detail="You cannot deactivate your own account.")
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
+    log.info(f"Admin deactivated user: {user.email}")
+    return user

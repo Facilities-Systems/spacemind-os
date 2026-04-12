@@ -2,7 +2,7 @@
 SpaceMind OS — SQLAlchemy ORM Models
 Persistence layer — keeps every decomposition in history and manages users.
 """
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase
@@ -18,7 +18,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     full_name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
@@ -56,7 +56,7 @@ class DecompositionRecord(Base):
     __tablename__ = "decompositions"
 
     id = Column(String(36), primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     request_text = Column(Text, nullable=False)
     request_type = Column(String(64), nullable=False)
     location_id = Column(String(128), nullable=False)
@@ -92,8 +92,8 @@ class InventoryItem(Base):
     min_level = Column(Float, nullable=False, default=0)
     location = Column(String(200), nullable=True)               # shelf / bin reference
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
 
     def __repr__(self) -> str:
         return f"<InventoryItem code={self.code} qty={self.quantity}>"
@@ -112,7 +112,7 @@ class InventoryTransaction(Base):
     borrower = Column(String(200), nullable=False)
     department = Column(String(100), nullable=True)
     work_order = Column(String(100), nullable=True)
-    date_out = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date_out = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     expected_return = Column(DateTime, nullable=True)
     date_returned = Column(DateTime, nullable=True)
     status = Column(String(20), default="Outstanding", nullable=False, index=True)
@@ -137,8 +137,8 @@ class InventoryRequisition(Base):
     items_description = Column(Text, nullable=False)
     status = Column(String(20), default="Pending", nullable=False, index=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
     created_by = Column(String(36), nullable=True)              # soft FK → users.id
 
     def __repr__(self) -> str:
@@ -161,8 +161,8 @@ class MedicalItem(Base):
     expiry_date = Column(Date, nullable=True)
     location = Column(String(200), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=lambda: datetime.now(UTC), nullable=False)
 
     def __repr__(self) -> str:
         return f"<MedicalItem name={self.name} qty={self.quantity}>"
@@ -181,7 +181,7 @@ class MedicalIncident(Base):
     description = Column(Text, nullable=False)
     treatment = Column(Text, nullable=True)
     status = Column(String(20), default="Open", nullable=False, index=True)
-    reported_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    reported_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
     resolved_at = Column(DateTime, nullable=True)
     created_by = Column(String(36), nullable=True)              # soft FK → users.id
 

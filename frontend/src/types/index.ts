@@ -246,3 +246,32 @@ export interface MedicalAnalytics {
   open_incidents: number
   critical_incidents: number
 }
+
+// ─── Insights Summary ─────────────────────────────────────────────────────────
+
+export interface InsightsKpi {
+  label: string
+  value: string
+  description: string
+  trend: 'up' | 'down'
+}
+
+export interface InsightsSummary {
+  decompositions: {
+    total: number
+    by_type: Array<{ type: string; count: number }>
+  }
+  inventory: {
+    total_items: number
+    low_stock_count: number
+    critical_count: number
+    outstanding_signouts: number
+    compliance_rate: number
+  }
+  medical: {
+    open_incidents: number
+    critical_incidents: number
+    low_stock_items: number
+  }
+  kpis: InsightsKpi[]
+}
