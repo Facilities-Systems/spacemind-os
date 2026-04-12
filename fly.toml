@@ -8,6 +8,9 @@ primary_region = "jnb"   # Johannesburg — closest to South Africa HQ
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  release_command = "alembic upgrade head"
+
 [env]
   APP_ENV = "production"
   APP_PORT = "8000"
