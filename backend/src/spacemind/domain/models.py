@@ -296,3 +296,45 @@ class AssetMaintenanceLog(Base):
 
     def __repr__(self) -> str:
         return f"<AssetMaintenanceLog asset={self.asset_id} type={self.maintenance_type}>"
+
+
+# ─── IoT Sensors ──────────────────────────────────────────────────────────────
+
+class SensorDevice(Base):
+    """
+    Registered IoT sensor that POSTs readings to /api/v1/sensors/ingest.
+    Authenticated by api_key_hash (SHA-256) — no JWT required on ingest.
+    """
+
+    __tablename__ = "sensor_devices"
+
+    id           = Column(String(36),  primary_key=True)
+    name         = Column(String(200), nullable=False)
+    location_id  = Column(String(50),  nullable=True, index=True)
+    zone_name    = Column(String(100), nullable=True)
+    sensor_type  = Column(String(50),  nullable=False, index=True)  # temperature|humidity|occupancy|air_quality|noise|security
+    api_key_hash = Column(String(64),  nullable=False, unique=True)  # SHA-256 of raw API key
+    is_active    = Column(Boolean,     default=True, nullable=False)
+    created_at   = Column(DateTime,    default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<SensorDevice name={self.name} type={self.sensor_type} location={self.location_id}>"
+
+
+class SensorReading(Base):
+    """One measurement posted by a SensorDevice."""
+
+    __tablename__ = "sensor_readings"
+
+    id          = Column(String(36),  primary_key=True)
+    sensor_id   = Column(String(36),  ForeignKey("sensor_devices.id", ondelete="CASCADE"), nullable=False, index=True)
+    sensor_type = Column(String(50),  nullable=False, index=True)
+    location_id = Column(String(50),  nullable=True, index=True)
+    zone_name   = Column(String(100), nullable=True)
+    value       = Column(Float,       nullable=False)
+    unit        = Column(String(20),  nullable=False)  # °C, %, ppm, dB, boolean
+    recorded_at = Column(DateTime,    nullable=False, index=True)
+    is_anomaly  = Column(Boolean,     default=False, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<SensorReading sensor={self.sensor_id} value={self.value}{self.unit} anomaly={self.is_anomaly}>"

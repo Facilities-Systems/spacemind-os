@@ -26,6 +26,7 @@ from spacemind.api.router_floorplans import router as floorplans_router
 from spacemind.api.router_history import router as history_router
 from spacemind.api.router_assets import router as assets_router
 from spacemind.api.router_insights import router as insights_router
+from spacemind.api.router_sensors import router as sensors_router
 from spacemind.api.router_inventory import router as inventory_router
 from spacemind.api.router_medical import router as medical_router
 from spacemind.api.router_suppliers import router as suppliers_router
@@ -144,7 +145,7 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
+    allow_headers=["Authorization", "Content-Type", "X-Correlation-ID", "X-API-Key"],
 )
 
 
@@ -191,6 +192,7 @@ app.include_router(medical_router)
 app.include_router(suppliers_router)
 app.include_router(floorplans_router)
 app.include_router(assets_router)
+app.include_router(sensors_router)
 app.include_router(insights_router)
 
 

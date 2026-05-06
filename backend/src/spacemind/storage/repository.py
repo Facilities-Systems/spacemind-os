@@ -22,6 +22,8 @@ from spacemind.domain.models import (
     InventoryTransaction,
     MedicalIncident,
     MedicalItem,
+    SensorDevice,
+    SensorReading,
     Supplier,
 )
 from spacemind.domain.schemas import (
@@ -929,3 +931,102 @@ class AssetRepository:
             "overdue_maintenance_count": overdue,
             "low_condition_count": low_condition,
         }
+
+
+# ─── SensorRepository ────────────────────────────────────────────────────────
+
+class SensorRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_device_by_api_key_hash(self, key_hash: str) -> Optional[SensorDevice]:
+        return self.db.query(SensorDevice).filter(
+            SensorDevice.api_key_hash == key_hash,
+            SensorDevice.is_active.is_(True),
+        ).first()
+
+    def create_device(self, name: str, sensor_type: str, location_id: Optional[str],
+                      zone_name: Optional[str], api_key_hash: str) -> SensorDevice:
+        from uuid import uuid4
+        device = SensorDevice(
+            id=str(uuid4()),
+            name=name,
+            sensor_type=sensor_type,
+            location_id=location_id,
+            zone_name=zone_name,
+            api_key_hash=api_key_hash,
+        )
+        self.db.add(device)
+        self.db.commit()
+        self.db.refresh(device)
+        return device
+
+    def save_reading(self, device: SensorDevice, value: float, unit: str,
+                     recorded_at: datetime, is_anomaly: bool) -> SensorReading:
+        from uuid import uuid4
+        reading = SensorReading(
+            id=str(uuid4()),
+            sensor_id=device.id,
+            sensor_type=device.sensor_type,
+            location_id=device.location_id,
+            zone_name=device.zone_name,
+            value=value,
+            unit=unit,
+            recorded_at=recorded_at,
+            is_anomaly=is_anomaly,
+        )
+        self.db.add(reading)
+        self.db.commit()
+        self.db.refresh(reading)
+        return reading
+
+    def get_latest_readings(self) -> List[dict]:
+        """Return the most recent reading per sensor_id."""
+        from sqlalchemy import func
+        subq = (
+            self.db.query(
+                SensorReading.sensor_id,
+                func.max(SensorReading.recorded_at).label("max_ts"),
+            )
+            .group_by(SensorReading.sensor_id)
+            .subquery()
+        )
+        rows = (
+            self.db.query(SensorReading, SensorDevice)
+            .join(subq, (SensorReading.sensor_id == subq.c.sensor_id) &
+                        (SensorReading.recorded_at == subq.c.max_ts))
+            .join(SensorDevice, SensorReading.sensor_id == SensorDevice.id)
+            .all()
+        )
+        return [{"reading": r, "device": d} for r, d in rows]
+
+    def get_history(self, sensor_type: Optional[str] = None,
+                    location_id: Optional[str] = None,
+                    limit: int = 200) -> List[SensorReading]:
+        q = self.db.query(SensorReading).order_by(SensorReading.recorded_at.desc())
+        if sensor_type:
+            q = q.filter(SensorReading.sensor_type == sensor_type)
+        if location_id:
+            q = q.filter(SensorReading.location_id == location_id)
+        return q.limit(limit).all()
+
+    def get_recent_readings_for_sensor(self, sensor_id: str, limit: int = 50) -> List[SensorReading]:
+        return (
+            self.db.query(SensorReading)
+            .filter(SensorReading.sensor_id == sensor_id)
+            .order_by(SensorReading.recorded_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_anomalies(self, limit: int = 100) -> List[SensorReading]:
+        return (
+            self.db.query(SensorReading)
+            .filter(SensorReading.is_anomaly.is_(True))
+            .order_by(SensorReading.recorded_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def list_devices(self) -> List[SensorDevice]:
+        return self.db.query(SensorDevice).filter(SensorDevice.is_active.is_(True)).all()

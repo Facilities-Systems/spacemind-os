@@ -25,6 +25,8 @@ import type {
   MedicalItem,
   Requisition,
   ReqStatus,
+  SensorReading,
+  SensorSummary,
   SignOutTx,
   Supplier,
   SupplierPayload,
@@ -393,6 +395,28 @@ export const api = {
 
   getMaintenanceSchedule: async (): Promise<MaintenanceScheduleItem[]> => {
     const { data } = await http.get<MaintenanceScheduleItem[]>('/assets/maintenance-schedule')
+    return data
+  },
+
+  // ── IoT Sensors ─────────────────────────────────────────────────────────────
+
+  getSensorLatest: async (): Promise<SensorSummary> => {
+    const { data } = await http.get<SensorSummary>('/sensors/latest')
+    return data
+  },
+
+  getSensorHistory: async (params?: { sensor_type?: string; location_id?: string; limit?: number }): Promise<SensorReading[]> => {
+    const { data } = await http.get<SensorReading[]>('/sensors/history', { params })
+    return data
+  },
+
+  getSensorAnomalies: async (limit = 100): Promise<SensorReading[]> => {
+    const { data } = await http.get<SensorReading[]>('/sensors/anomalies', { params: { limit } })
+    return data
+  },
+
+  analyseSensors: async (): Promise<{ analysis: string }> => {
+    const { data } = await http.post<{ analysis: string }>('/sensors/analyse')
     return data
   },
 }

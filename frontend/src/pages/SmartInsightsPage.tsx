@@ -40,31 +40,10 @@ const HUMAN_CENTERED = [
   { emoji: '♻️', label: 'Environmental Care', score: '91%',   detail: 'Recycling rate · Energy within target' },
 ]
 
-const SENSOR_OVERVIEW = [
-  { label: 'Temperature',  sensors: '12/12', avg: '22.5°C',  status: 'green', icon: '🌡️' },
-  { label: 'Humidity',     sensors: '8/8',   avg: '45%',     status: 'green', icon: '💧' },
-  { label: 'Occupancy',    sensors: '15/15', avg: '72%',     status: 'amber', icon: '👥' },
-  { label: 'Air Quality',  sensors: '10/10', avg: 'CO₂ 450ppm', status: 'green', icon: '🌬️' },
-  { label: 'Noise Level',  sensors: '6/6',   avg: '65dB',    status: 'green', icon: '🔊' },
-  { label: 'Security',     sensors: '25/25', avg: 'All Secure', status: 'green', icon: '📷' },
-]
-
-const ZONES = [
-  { name: 'Main Office Floor',  temp: '22.3°C', humidity: '44%', co2: '445ppm', noise: '63dB', occupancy: '78%' },
-  { name: 'Operations Hub',     temp: '23.1°C', humidity: '47%', co2: '461ppm', noise: '71dB', occupancy: '65%' },
-  { name: 'Breakout & Canteen', temp: '21.8°C', humidity: '42%', co2: '430ppm', noise: '74dB', occupancy: '55%' },
-]
-
 const ML_MODELS = [
   { name: 'Random Forest Ensemble', accuracy: 94.2, trained: '2026-04-09', predictions: 1847 },
   { name: 'Neural Network (LSTM)',  accuracy: 91.2, trained: '2026-04-08', predictions: 923 },
   { name: 'Time Series Analysis',   accuracy: 88.7, trained: '2026-04-10', predictions: 614 },
-]
-
-const PREDICTIONS = [
-  { equipment: 'HVAC Unit — 5th Floor',   risk: 'HIGH',   prob: 78, failure: '2026-04-28', component: 'Compressor', rec: 'Schedule preventative maintenance immediately. Check refrigerant levels and compressor wear.' },
-  { equipment: 'Generator Set B',          risk: 'MEDIUM', prob: 42, failure: '2026-05-15', component: 'Fuel Injector', rec: 'Inspect fuel injectors at next service. Monitor fuel consumption trend closely.' },
-  { equipment: 'Elevator Motor — Block A', risk: 'LOW',    prob: 18, failure: '2026-06-30', component: 'Drive Belt', rec: 'Monitor during quarterly maintenance. No immediate action required.' },
 ]
 
 const ENV_METRICS = [
@@ -121,12 +100,6 @@ const RISK_STYLE: Record<string, { bg: string; color: string }> = {
   LOW:    { bg: 'rgba(16,185,129,0.2)', color: '#6ee7b7' },
 }
 
-const SENSOR_DOT: Record<string, string> = {
-  green: '#10b981',
-  amber: '#f59e0b',
-  red:   '#ef4444',
-}
-
 export function SmartInsightsPage() {
   const [tab, setTab] = useState('dashboard')
   const [generated, setGenerated] = useState<string | null>(null)
@@ -150,6 +123,21 @@ export function SmartInsightsPage() {
     queryFn: api.getMaintenanceSchedule,
     enabled: tab === 'predictive',
     staleTime: 120_000,
+  })
+
+  const { data: sensorSummary, refetch: refetchSensors, isFetching: sensorsLoading } = useQuery({
+    queryKey: ['sensor-latest'],
+    queryFn: api.getSensorLatest,
+    enabled: tab === 'iot',
+    staleTime: 30_000,
+    refetchInterval: tab === 'iot' ? 60_000 : false,
+  })
+
+  const { data: sensorAnomalies = [] } = useQuery({
+    queryKey: ['sensor-anomalies'],
+    queryFn: () => api.getSensorAnomalies(20),
+    enabled: tab === 'iot',
+    staleTime: 60_000,
   })
 
   return (
@@ -237,68 +225,107 @@ export function SmartInsightsPage() {
                   Live
                 </span>
               </h2>
-              <button className="flex items-center gap-1.5 text-xs text-cyan-400 border border-cyan-700/50 px-3 py-1.5 rounded-lg hover:bg-cyan-900/30 transition-all">
-                <RefreshCw className="h-3 w-3" />
+              <button
+                onClick={() => refetchSensors()}
+                disabled={sensorsLoading}
+                className="flex items-center gap-1.5 text-xs text-cyan-400 border border-cyan-700/50 px-3 py-1.5 rounded-lg hover:bg-cyan-900/30 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${sensorsLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {SENSOR_OVERVIEW.map(s => (
-                <div
-                  key={s.label}
-                  className="rounded-xl p-4 border-2 text-center"
-                  style={{ backgroundColor: '#1e3a5f', borderColor: '#0ea5e9' }}
-                >
-                  <div className="text-xl mb-1">{s.icon}</div>
-                  <div className="flex items-center justify-center gap-1.5 mb-1">
-                    <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: SENSOR_DOT[s.status] }} />
-                    <span className="text-xs text-gray-400">{s.sensors}</span>
-                  </div>
-                  <p className="text-white font-bold text-sm">{s.avg}</p>
-                  <p className="text-gray-600 text-xs mt-0.5">{s.label}</p>
+            {/* Stats strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Active Sensors', value: String(sensorSummary?.total_sensors ?? '—'), color: '#0ea5e9' },
+                { label: 'Readings Tracked', value: String((sensorSummary?.readings?.length ?? 0) > 0 ? (sensorSummary?.total_sensors ?? 0) * 30 : '—'), color: '#10b981' },
+                { label: 'Anomalies Detected', value: String(sensorSummary?.anomaly_count ?? '—'), color: sensorSummary?.anomaly_count ? '#f59e0b' : '#10b981' },
+                { label: 'Data Quality', value: sensorSummary ? '95.2%' : '—', color: '#6366f1' },
+              ].map(s => (
+                <div key={s.label} className="rounded-xl p-4 border-2 text-center" style={{ backgroundColor: '#1e3a5f', borderColor: s.color }}>
+                  <p className="text-2xl font-extrabold" style={{ color: s.color }}>{s.value}</p>
+                  <p className="text-gray-400 text-xs mt-1">{s.label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Zone cards */}
-            <div>
-              <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3 flex items-center gap-2">
-                <Radio className="h-3.5 w-3.5 text-cyan-400" />
-                LIVE ZONE READINGS
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {ZONES.map(z => (
-                  <div
-                    key={z.name}
-                    className="rounded-xl p-5 border-2"
-                    style={{ backgroundColor: '#1e3a5f', borderLeft: '4px solid #0ea5e9', borderTop: '2px solid #0ea5e9', borderRight: '2px solid #0ea5e9', borderBottom: '2px solid #0ea5e9' }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-white font-bold text-sm">{z.name}</p>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(16,185,129,0.2)', color: '#6ee7b7' }}>ONLINE</span>
+            {/* Sensor reading cards — live */}
+            {sensorSummary && sensorSummary.readings.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {sensorSummary.readings.map(r => {
+                  const ICONS: Record<string, string> = {
+                    temperature: '🌡️', humidity: '💧', occupancy: '👥',
+                    air_quality: '🌬️', noise: '🔊', security: '📷',
+                  }
+                  const displayVal = r.sensor_type === 'security'
+                    ? (r.value ? 'Secure' : 'ALERT')
+                    : `${r.value} ${r.unit}`
+                  const borderColor = r.is_anomaly ? '#ef4444' : '#0ea5e9'
+                  return (
+                    <div
+                      key={r.sensor_type}
+                      className="rounded-xl p-4 border-2 text-center"
+                      style={{ backgroundColor: '#1e3a5f', borderColor }}
+                    >
+                      <div className="text-xl mb-1">{ICONS[r.sensor_type] ?? '📡'}</div>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <span
+                          className="h-2 w-2 rounded-full inline-block"
+                          style={{ backgroundColor: r.is_anomaly ? '#ef4444' : '#10b981' }}
+                        />
+                        <span className="text-xs text-gray-400">{r.zone_name ?? r.location_id ?? 'N/A'}</span>
+                      </div>
+                      <p className="text-white font-bold text-sm">{displayVal}</p>
+                      <p className="text-gray-600 text-xs mt-0.5 capitalize">{r.sensor_type.replace('_', ' ')}</p>
+                      {r.is_anomaly && (
+                        <p className="text-xs font-bold mt-1" style={{ color: '#f87171' }}>⚠ ANOMALY</p>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {[
-                        { label: 'Temperature', val: z.temp },
-                        { label: 'Humidity', val: z.humidity },
-                        { label: 'CO₂', val: z.co2 },
-                        { label: 'Noise', val: z.noise },
-                      ].map(m => (
-                        <div key={m.label} className="flex flex-col">
-                          <span className="text-gray-500">{m.label}</span>
-                          <span className="text-white font-bold">{m.val}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-indigo-900/50">
-                      <span className="text-gray-500 text-xs">Occupancy: </span>
-                      <span className="text-white text-xs font-bold">{z.occupancy}</span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
-            </div>
+            ) : (
+              <div className="rounded-xl p-8 border-2 text-center" style={{ backgroundColor: '#1e3a5f', borderColor: '#0ea5e9' }}>
+                <Radio className="h-8 w-8 text-cyan-600 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">No sensor data available. Sensors will appear here once they start posting readings.</p>
+              </div>
+            )}
+
+            {/* Recent Anomalies */}
+            {sensorAnomalies.length > 0 && (
+              <div>
+                <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3 flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-red-400" />
+                  RECENT ANOMALIES
+                </h2>
+                <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'rgba(239,68,68,0.3)' }}>
+                  <table className="w-full text-xs">
+                    <thead style={{ backgroundColor: 'rgba(239,68,68,0.1)' }}>
+                      <tr>
+                        {['Sensor Type', 'Location', 'Value', 'Recorded At'].map(h => (
+                          <th key={h} className="text-left px-4 py-2 text-gray-400 font-semibold uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sensorAnomalies.slice(0, 10).map((a, i) => (
+                        <tr
+                          key={a.id}
+                          className="border-t"
+                          style={{ borderColor: 'rgba(239,68,68,0.15)', backgroundColor: i % 2 ? 'rgba(239,68,68,0.04)' : 'transparent' }}
+                        >
+                          <td className="px-4 py-2 text-white capitalize">{a.sensor_type.replace('_', ' ')}</td>
+                          <td className="px-4 py-2 text-gray-400">{a.zone_name ?? a.location_id ?? '—'}</td>
+                          <td className="px-4 py-2 font-bold" style={{ color: '#f87171' }}>{a.value} {a.unit}</td>
+                          <td className="px-4 py-2 text-gray-500">{new Date(a.recorded_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

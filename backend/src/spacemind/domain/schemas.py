@@ -507,3 +507,60 @@ class AssetAnalytics(BaseModel):
     total_portfolio_value: float
     overdue_maintenance_count: int
     low_condition_count: int   # condition_score < 5
+
+
+# ─── IoT Sensors ──────────────────────────────────────────────────────────────
+
+class SensorIngest(BaseModel):
+    """Payload posted by a physical/simulated sensor device."""
+    sensor_type: str = Field(..., pattern="^(temperature|humidity|occupancy|air_quality|noise|security)$")
+    location_id: str = Field(..., min_length=1)
+    zone_name: Optional[str] = None
+    value: float
+    unit: str = Field(..., min_length=1, max_length=20)
+    recorded_at: Optional[str] = None   # ISO datetime; defaults to server time if omitted
+
+
+class SensorReadingOut(BaseModel):
+    id: str
+    sensor_id: str
+    sensor_type: str
+    location_id: Optional[str]
+    zone_name: Optional[str]
+    value: float
+    unit: str
+    recorded_at: datetime
+    is_anomaly: bool
+
+    model_config = {"from_attributes": True}
+
+
+class SensorDeviceOut(BaseModel):
+    id: str
+    name: str
+    location_id: Optional[str]
+    zone_name: Optional[str]
+    sensor_type: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LatestSensorReading(BaseModel):
+    """Latest reading per sensor type per location."""
+    sensor_type: str
+    location_id: Optional[str]
+    zone_name: Optional[str]
+    value: float
+    unit: str
+    recorded_at: datetime
+    is_anomaly: bool
+    sensor_name: str
+
+
+class SensorSummary(BaseModel):
+    """Aggregated overview returned by GET /sensors/latest."""
+    readings: List[LatestSensorReading]
+    anomaly_count: int
+    total_sensors: int

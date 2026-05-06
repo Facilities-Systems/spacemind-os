@@ -492,3 +492,36 @@ export interface MaintenanceScheduleItem {
   condition_score: number
   overdue: boolean
 }
+
+// ─── IoT Sensors ──────────────────────────────────────────────────────────────
+
+export type SensorType = 'temperature' | 'humidity' | 'occupancy' | 'air_quality' | 'noise' | 'security'
+
+export interface SensorReading {
+  id: string
+  sensor_id: string
+  sensor_type: SensorType
+  location_id: string | null
+  zone_name: string | null
+  value: number
+  unit: string
+  recorded_at: string
+  is_anomaly: boolean
+}
+
+export interface LatestSensorReading {
+  sensor_type: SensorType
+  location_id: string | null
+  zone_name: string | null
+  value: number
+  unit: string
+  recorded_at: string
+  is_anomaly: boolean
+  sensor_name: string
+}
+
+export interface SensorSummary {
+  readings: LatestSensorReading[]
+  anomaly_count: number
+  total_sensors: number
+}
