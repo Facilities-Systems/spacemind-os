@@ -4,6 +4,7 @@ import {
   Activity,
   BarChart3,
   BrainCircuit,
+  ClipboardList,
   Heart,
   History,
   Home,
@@ -18,6 +19,7 @@ const primaryNav = [
   { to: '/storeroom',      label: 'Storeroom',       icon: Package },
   { to: '/assets',         label: 'Asset Lifecycle', icon: Activity },
   { to: '/floor-plans',    label: 'Floor Plans',     icon: LayoutTemplate },
+  { to: '/tickets',        label: 'Help Desk',       icon: ClipboardList },
   { to: '/medical',        label: 'People Services', icon: Heart },
   { to: '/smart-insights', label: 'Intelligence',    icon: BarChart3 },
 ]

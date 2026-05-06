@@ -26,6 +26,7 @@ import { NewsTrainingPage } from './pages/NewsTrainingPage'
 import { SmartInsightsPage } from './pages/SmartInsightsPage'
 import { AdminPage } from './pages/AdminPage'
 import { AssetsPage } from './pages/AssetsPage'
+import { TicketsPage } from './pages/TicketsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +77,7 @@ export default function App() {
               <Route path="/smart-insights" element={<SmartInsightsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/assets" element={<AssetsPage />} />
+              <Route path="/tickets" element={<TicketsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
