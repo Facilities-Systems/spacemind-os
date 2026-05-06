@@ -426,4 +426,31 @@ export const api = {
     const { data } = await http.post<{ reply: string }>('/chat', { messages })
     return data
   },
+
+  // ── Reports ──────────────────────────────────────────────────────────────────
+
+  getExecutiveBrief: async (): Promise<{ report_type: string; content: string }> => {
+    const { data } = await http.get<{ report_type: string; content: string }>('/reports/executive-brief')
+    return data
+  },
+
+  getKpiSummary: async (): Promise<{
+    generated_at: string
+    asset_health_pct: number
+    condition_score_pct: number
+    high_risk_assets: number
+    overdue_maintenance: number
+    medical_alerts: number
+    sensor_anomalies: number
+    total_assets: number
+    portfolio_value: number
+  }> => {
+    const { data } = await http.get('/reports/kpi-summary')
+    return data
+  },
+
+  generateReport: async (report_type: string): Promise<{ report_type: string; content: string }> => {
+    const { data } = await http.post<{ report_type: string; content: string }>('/reports/generate', { report_type })
+    return data
+  },
 }

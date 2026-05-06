@@ -17,6 +17,7 @@ import {
   Leaf,
   Radio,
   RefreshCw,
+  Sparkles,
   Zap,
 } from 'lucide-react'
 import { Header } from '../components/layout/Header'
@@ -103,6 +104,9 @@ const RISK_STYLE: Record<string, { bg: string; color: string }> = {
 export function SmartInsightsPage() {
   const [tab, setTab] = useState('dashboard')
   const [generated, setGenerated] = useState<string | null>(null)
+  const [briefContent, setBriefContent] = useState<string | null>(null)
+  const [briefLoading, setBriefLoading] = useState(false)
+  const [briefError, setBriefError] = useState<string | null>(null)
 
   const { data: insightsSummary } = useQuery({
     queryKey: ['insights-summary'],
@@ -138,6 +142,13 @@ export function SmartInsightsPage() {
     queryFn: () => api.getSensorAnomalies(20),
     enabled: tab === 'iot',
     staleTime: 60_000,
+  })
+
+  const { data: kpiSummary } = useQuery({
+    queryKey: ['reports-kpi-summary'],
+    queryFn: api.getKpiSummary,
+    enabled: tab === 'reports',
+    staleTime: 120_000,
   })
 
   return (
@@ -563,6 +574,75 @@ export function SmartInsightsPage() {
         {/* ── REPORTS TAB ───────────────────────────────────────────────── */}
         {tab === 'reports' && (
           <div className="space-y-5">
+
+            {/* Live KPI Summary strip */}
+            {kpiSummary && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Asset Health', value: `${kpiSummary.asset_health_pct}%`, color: kpiSummary.asset_health_pct > 80 ? '#10b981' : '#f59e0b' },
+                  { label: 'Condition Score', value: `${kpiSummary.condition_score_pct}%`, color: kpiSummary.condition_score_pct > 70 ? '#10b981' : '#f59e0b' },
+                  { label: 'High-Risk Assets', value: String(kpiSummary.high_risk_assets), color: kpiSummary.high_risk_assets > 0 ? '#f87171' : '#10b981' },
+                  { label: 'Medical Alerts', value: String(kpiSummary.medical_alerts), color: kpiSummary.medical_alerts > 0 ? '#f59e0b' : '#10b981' },
+                ].map(k => (
+                  <div key={k.label} className="rounded-xl p-4 border-2 text-center" style={{ backgroundColor: '#1e3a5f', borderColor: k.color }}>
+                    <p className="text-2xl font-extrabold" style={{ color: k.color }}>{k.value}</p>
+                    <p className="text-gray-400 text-xs mt-1">{k.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Executive Brief — live AI */}
+            <div className="rounded-xl border-2 p-5" style={{ backgroundColor: '#1e3a5f', borderColor: '#6366f1' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                    <span className="text-xl">📋</span>
+                    Executive Summary
+                    <span className="text-xs font-normal px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(99,102,241,0.3)', color: '#a5b4fc' }}>AI-Generated</span>
+                  </h3>
+                  <p className="text-gray-500 text-xs mt-0.5">High-level overview for senior management with live FM data — powered by Claude Sonnet</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setBriefLoading(true)
+                    setBriefError(null)
+                    setBriefContent(null)
+                    try {
+                      const { content } = await api.getExecutiveBrief()
+                      setBriefContent(content)
+                    } catch (e: unknown) {
+                      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Failed to generate brief'
+                      setBriefError(msg)
+                    } finally {
+                      setBriefLoading(false)
+                    }
+                  }}
+                  disabled={briefLoading}
+                  className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
+                  style={{ backgroundColor: 'rgba(99,102,241,0.25)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.5)' }}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {briefLoading ? 'Generating…' : 'Generate Now'}
+                </button>
+              </div>
+
+              {briefContent && (
+                <div
+                  className="rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap mt-3"
+                  style={{ backgroundColor: 'rgba(99,102,241,0.08)', color: '#e2e8f0', border: '1px solid rgba(99,102,241,0.2)' }}
+                >
+                  {briefContent}
+                </div>
+              )}
+              {briefError && (
+                <div className="rounded-lg p-3 mt-3 text-xs" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+                  ⚠ {briefError}
+                </div>
+              )}
+            </div>
+
+            {/* Report type cards */}
             <div>
               <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-4 flex items-center gap-2">
                 <Download className="h-3.5 w-3.5 text-indigo-400" />
@@ -596,7 +676,7 @@ export function SmartInsightsPage() {
               </div>
             </div>
 
-            {/* Recent reports */}
+            {/* Recent reports — static mock */}
             <div>
               <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3">RECENT REPORTS</h2>
               <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#6366f1' }}>

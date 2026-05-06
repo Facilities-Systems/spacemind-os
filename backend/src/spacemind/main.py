@@ -27,6 +27,7 @@ from spacemind.api.router_history import router as history_router
 from spacemind.api.router_assets import router as assets_router
 from spacemind.api.router_chat import router as chat_router
 from spacemind.api.router_insights import router as insights_router
+from spacemind.api.router_reports import router as reports_router
 from spacemind.api.router_sensors import router as sensors_router
 from spacemind.api.router_inventory import router as inventory_router
 from spacemind.api.router_medical import router as medical_router
@@ -195,6 +196,7 @@ app.include_router(floorplans_router)
 app.include_router(assets_router)
 app.include_router(sensors_router)
 app.include_router(chat_router)
+app.include_router(reports_router)
 app.include_router(insights_router)
 
 
