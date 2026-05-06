@@ -525,3 +525,28 @@ export interface SensorSummary {
   anomaly_count: number
   total_sensors: number
 }
+
+// ─── SSE Streaming (orchestrate/stream) ──────────────────────────────────────
+
+export type StreamEventType =
+  | 'status'
+  | 'agent_start'
+  | 'agent_done'
+  | 'complete'
+  | 'error'
+
+export type AgentKey = 'supervisor' | 'operations' | 'technical' | 'vendor' | 'synthesizer'
+
+export interface AgentStreamEvent {
+  type: StreamEventType
+  /** Present on agent_start / agent_done */
+  agent?: AgentKey
+  label?: string
+  message?: string
+  content?: string
+  /** Present on complete */
+  decomposition_id?: string
+  total_tasks?: number
+  phases?: number
+  total_tokens?: number
+}

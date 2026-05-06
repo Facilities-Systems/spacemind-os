@@ -4,6 +4,7 @@ POST /api/v1/decompose   — single-pass AI decomposition
 POST /api/v1/orchestrate — multi-agent decomposition
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
@@ -109,3 +110,31 @@ def orchestrate(
         },
     )
     return result
+
+
+@router.post(
+    "/orchestrate/stream",
+    summary="Multi-agent decomposition with live SSE progress streaming",
+    include_in_schema=True,
+)
+@limiter.limit(DECOMPOSE_RATE)
+async def orchestrate_stream(
+    request: Request,
+    body: DecompositionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("facilities_manager", "admin")),
+) -> StreamingResponse:
+    """
+    Same pipeline as /orchestrate but streams progress events as each agent completes.
+    Response: text/event-stream — events: status, agent_start, agent_done, complete, error
+    """
+    service = OrchestrationService(db)
+    return StreamingResponse(
+        service.stream(body),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
