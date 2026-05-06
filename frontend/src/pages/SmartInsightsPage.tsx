@@ -138,6 +138,20 @@ export function SmartInsightsPage() {
   })
   const kpis: InsightsKpi[] = insightsSummary?.kpis ?? FALLBACK_KPIS
 
+  const { data: riskReport = [] } = useQuery({
+    queryKey: ['asset-risk-report'],
+    queryFn: api.getAssetRiskReport,
+    enabled: tab === 'predictive',
+    staleTime: 120_000,
+  })
+
+  const { data: maintSchedule = [] } = useQuery({
+    queryKey: ['maintenance-schedule'],
+    queryFn: api.getMaintenanceSchedule,
+    enabled: tab === 'predictive',
+    staleTime: 120_000,
+  })
+
   return (
     <div className="flex flex-col h-full">
       <Header
@@ -326,49 +340,94 @@ export function SmartInsightsPage() {
               </div>
             </div>
 
-            {/* Equipment predictions */}
+            {/* Equipment predictions — live from /assets/risk-report */}
             <div>
               <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3 flex items-center gap-2">
                 <Zap className="h-3.5 w-3.5 text-amber-400" />
-                EQUIPMENT FAILURE PREDICTIONS
+                ASSET RISK REPORT
               </h2>
-              <div className="space-y-3">
-                {PREDICTIONS.map(p => {
-                  const rs = RISK_STYLE[p.risk]
-                  return (
-                    <div
-                      key={p.equipment}
-                      className="rounded-xl p-5 border-2"
-                      style={{ backgroundColor: '#1e3a5f', borderColor: p.risk === 'HIGH' ? '#ef4444' : p.risk === 'MEDIUM' ? '#f59e0b' : '#10b981' }}
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div>
-                          <p className="text-white font-bold text-sm">{p.equipment}</p>
-                          <p className="text-gray-500 text-xs mt-0.5">Component at risk: <span className="text-gray-300">{p.component}</span></p>
+              {riskReport.length === 0 ? (
+                <div className="rounded-xl p-8 border border-surface-border text-center">
+                  <p className="text-gray-600 text-sm">No assets registered — add assets in Asset Lifecycle to see risk predictions</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {riskReport.slice(0, 6).map(p => {
+                    const riskKey = p.risk_level.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW'
+                    const rs = RISK_STYLE[riskKey] ?? RISK_STYLE.LOW
+                    return (
+                      <div
+                        key={p.asset_id}
+                        className="rounded-xl p-5 border-2"
+                        style={{ backgroundColor: '#1e3a5f', borderColor: p.risk_level === 'high' ? '#ef4444' : p.risk_level === 'medium' ? '#f59e0b' : '#10b981' }}
+                      >
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div>
+                            <p className="text-white font-bold text-sm">{p.asset_name}</p>
+                            <p className="text-gray-500 text-xs mt-0.5">{p.asset_code} · {p.category} · Condition: {p.condition_score}/10</p>
+                          </div>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: rs.bg, color: rs.color }}>
+                            {riskKey} RISK
+                          </span>
                         </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: rs.bg, color: rs.color }}>
-                          {p.risk} RISK
-                        </span>
-                      </div>
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">Failure probability</span>
-                          <span className="font-bold" style={{ color: rs.color }}>{p.prob}%</span>
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-gray-500">Risk score</span>
+                            <span className="font-bold" style={{ color: rs.color }}>{p.risk_score}/100</span>
+                          </div>
+                          <div className="h-2 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                            <div className="h-2 rounded-full" style={{ width: `${p.risk_score}%`, backgroundColor: rs.color }} />
+                          </div>
                         </div>
-                        <div className="h-2 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                          <div className="h-2 rounded-full" style={{ width: `${p.prob}%`, backgroundColor: rs.color }} />
+                        <div className="flex gap-4 text-xs">
+                          <span className="text-gray-500">Days since maintenance: <span className="text-gray-300">{p.days_since_maintenance}</span></span>
+                          {p.overdue_days > 0 && <span className="text-red-400 font-semibold">{p.overdue_days} days overdue</span>}
                         </div>
                       </div>
-                      <div className="p-3 rounded-lg text-xs" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                        <span className="text-gray-400 font-semibold">Recommendation: </span>
-                        <span className="text-gray-300">{p.rec}</span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">Predicted failure date: <span className="text-gray-400">{p.failure}</span></p>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Maintenance schedule */}
+            {maintSchedule.length > 0 && (
+              <div>
+                <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3 flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-teal-400" />
+                  UPCOMING MAINTENANCE (60 DAYS)
+                </h2>
+                <div className="rounded-xl border border-surface-border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-surface-border" style={{ backgroundColor: 'rgba(0,128,128,0.1)' }}>
+                        {['Asset', 'Category', 'Due Date', 'Days', 'Condition'].map(h => (
+                          <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {maintSchedule.map(s => (
+                        <tr key={s.asset_id} className="border-b border-surface-border/50 hover:bg-[#1e3a5f]/20">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-xs font-semibold">{s.asset_name}</p>
+                            <p className="text-gray-600 text-xs">{s.asset_code}</p>
+                          </td>
+                          <td className="px-4 py-3 text-gray-400 text-xs">{s.category}</td>
+                          <td className="px-4 py-3 text-gray-300 text-xs">{new Date(s.next_maintenance_due).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: s.overdue ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)', color: s.overdue ? '#f87171' : '#6ee7b7' }}>
+                              {s.overdue ? `${Math.abs(s.days_until_due)}d overdue` : `${s.days_until_due}d`}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-300 text-xs">{s.condition_score}/10</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

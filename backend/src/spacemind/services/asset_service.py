@@ -106,6 +106,87 @@ class AssetService:
 
     # ── AI analysis ───────────────────────────────────────────────────────────
 
+    def predict_maintenance_need(self, asset_id: str) -> dict:
+        """Return a 0–100 risk score based on condition trend, days since maintenance, and frequency."""
+        asset = self._repo.get_asset(asset_id)
+        if not asset:
+            return {"asset_id": asset_id, "risk_score": 0, "risk_level": "unknown"}
+
+        history = self._repo.get_maintenance_history(asset_id)
+        now = datetime.now(UTC)
+
+        # Days since last maintenance (max 365)
+        days_since = 365
+        if asset.last_maintained_at:
+            days_since = min(365, (now - asset.last_maintained_at.replace(tzinfo=UTC)).days)
+
+        # Days overdue (0 if not scheduled)
+        overdue_days = 0
+        if asset.next_maintenance_due:
+            diff = (now - asset.next_maintenance_due.replace(tzinfo=UTC)).days
+            overdue_days = max(0, diff)
+
+        # Condition decay factor (10 = perfect, 0 = critical)
+        condition_factor = max(0.0, 10.0 - float(asset.condition_score or 10.0))
+
+        # Maintenance frequency in last 12 months
+        twelve_months_ago = now.replace(year=now.year - 1)
+        recent_events = sum(
+            1 for h in history
+            if h.performed_at and h.performed_at.replace(tzinfo=UTC) >= twelve_months_ago
+        )
+
+        # Weighted risk score 0–100
+        score = min(100, int(
+            (days_since / 365) * 30 +       # 30% weight: time since maintenance
+            (overdue_days / 30) * 25 +       # 25% weight: overdue days (cap at 30)
+            condition_factor * 4 +           # 40% weight: condition (0–10 * 4 = 0–40)
+            max(0, (4 - recent_events)) * 5  # 5% weight: low maintenance frequency
+        ))
+
+        risk_level = "low" if score < 30 else "medium" if score < 60 else "high"
+        return {
+            "asset_id": asset_id,
+            "asset_name": str(asset.name),
+            "asset_code": str(asset.asset_code),
+            "category": str(asset.category),
+            "risk_score": score,
+            "risk_level": risk_level,
+            "condition_score": float(asset.condition_score or 10.0),
+            "days_since_maintenance": days_since,
+            "overdue_days": overdue_days,
+            "recent_maintenance_count": recent_events,
+        }
+
+    def get_maintenance_schedule(self) -> list:
+        """All active assets sorted by next_maintenance_due, due within 60 days."""
+        assets = self._repo.list_assets(status="active")
+        now = datetime.now(UTC)
+        cutoff = now.replace(day=now.day)
+        schedule = []
+        for asset in assets:
+            if asset.next_maintenance_due:
+                due = asset.next_maintenance_due.replace(tzinfo=UTC)
+                days_until = (due - now).days
+                if days_until <= 60:
+                    schedule.append({
+                        "asset_id": str(asset.id),
+                        "asset_name": str(asset.name),
+                        "asset_code": str(asset.asset_code),
+                        "category": str(asset.category),
+                        "next_maintenance_due": asset.next_maintenance_due.isoformat(),
+                        "days_until_due": days_until,
+                        "condition_score": float(asset.condition_score or 10.0),
+                        "overdue": days_until < 0,
+                    })
+        return sorted(schedule, key=lambda x: x["days_until_due"])
+
+    def get_risk_report(self) -> list:
+        """Risk score for every active asset, sorted by score descending."""
+        assets = self._repo.list_assets(status="active")
+        results = [self.predict_maintenance_need(str(a.id)) for a in assets]
+        return sorted(results, key=lambda x: x["risk_score"], reverse=True)
+
     def analyse_with_ai(self, asset_id: str) -> str:
         asset = self._repo.get_asset(asset_id)
         if not asset:

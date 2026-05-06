@@ -123,6 +123,24 @@ def log_maintenance(
     return log_entry
 
 
+# ─── Predictive Maintenance ───────────────────────────────────────────────────
+
+@router.get("/maintenance-schedule", summary="Assets due for maintenance in next 60 days")
+def get_maintenance_schedule(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list:
+    return AssetService(db).get_maintenance_schedule()
+
+
+@router.get("/risk-report", summary="Maintenance risk scores for all active assets")
+def get_risk_report(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list:
+    return AssetService(db).get_risk_report()
+
+
 # ─── AI Analysis ──────────────────────────────────────────────────────────────
 
 @router.post("/{asset_id}/analyse", summary="AI repair-vs-replace recommendation")

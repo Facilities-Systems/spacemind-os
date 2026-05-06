@@ -468,3 +468,27 @@ export interface AssetAnalytics {
   overdue_maintenance_count: number
   low_condition_count: number
 }
+
+export interface AssetRiskItem {
+  asset_id: string
+  asset_name: string
+  asset_code: string
+  category: string
+  risk_score: number
+  risk_level: 'low' | 'medium' | 'high'
+  condition_score: number
+  days_since_maintenance: number
+  overdue_days: number
+  recent_maintenance_count: number
+}
+
+export interface MaintenanceScheduleItem {
+  asset_id: string
+  asset_name: string
+  asset_code: string
+  category: string
+  next_maintenance_due: string
+  days_until_due: number
+  condition_score: number
+  overdue: boolean
+}

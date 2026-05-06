@@ -3,6 +3,7 @@ import type {
   AdminDashboard,
   Asset,
   AssetAnalytics,
+  AssetRiskItem,
   AuditLogResponse,
   ComplianceAnalytics,
   DecompositionRequest,
@@ -17,6 +18,7 @@ import type {
   ItemQr,
   Location,
   MaintenanceLog,
+  MaintenanceScheduleItem,
   MedicalAlerts,
   MedicalAnalytics,
   MedicalIncident,
@@ -381,6 +383,16 @@ export const api = {
 
   analyseAsset: async (id: string): Promise<{ asset_id: string; analysis: string }> => {
     const { data } = await http.post<{ asset_id: string; analysis: string }>(`/assets/${id}/analyse`)
+    return data
+  },
+
+  getAssetRiskReport: async (): Promise<AssetRiskItem[]> => {
+    const { data } = await http.get<AssetRiskItem[]>('/assets/risk-report')
+    return data
+  },
+
+  getMaintenanceSchedule: async (): Promise<MaintenanceScheduleItem[]> => {
+    const { data } = await http.get<MaintenanceScheduleItem[]>('/assets/maintenance-schedule')
     return data
   },
 }
