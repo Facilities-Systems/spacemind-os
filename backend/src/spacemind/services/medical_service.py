@@ -107,3 +107,10 @@ class MedicalService:
 
     def get_analytics(self) -> dict:
         return self._repo.get_analytics()
+
+    def get_alerts(self, days_ahead: int = 30) -> dict:
+        return {
+            "expired":       self._repo.get_expired_items(),
+            "expiring_soon": self._repo.get_expiring_items(days_ahead=days_ahead),
+            "low_stock":     self._repo.get_low_stock_items(),
+        }

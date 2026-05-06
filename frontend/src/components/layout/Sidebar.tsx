@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
+  Activity,
   BarChart3,
   BrainCircuit,
   Heart,
@@ -15,6 +16,7 @@ import {
 
 const primaryNav = [
   { to: '/storeroom',      label: 'Storeroom',       icon: Package },
+  { to: '/assets',         label: 'Asset Lifecycle', icon: Activity },
   { to: '/floor-plans',    label: 'Floor Plans',     icon: LayoutTemplate },
   { to: '/medical',        label: 'People Services', icon: Heart },
   { to: '/smart-insights', label: 'Intelligence',    icon: BarChart3 },

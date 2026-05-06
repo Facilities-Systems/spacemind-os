@@ -15,6 +15,7 @@ from spacemind.domain.schemas import (
     IncidentCreate,
     IncidentOut,
     IncidentStatusUpdate,
+    MedicalAlerts,
     MedicalAnalytics,
     MedicalItemCreate,
     MedicalItemOut,
@@ -126,3 +127,13 @@ def get_analytics(
 ):
     svc = MedicalService(db)
     return svc.get_analytics()
+
+
+@router.get("/alerts", response_model=MedicalAlerts, summary="Expiry and low-stock alerts")
+def get_alerts(
+    days_ahead: int = Query(default=30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    svc = MedicalService(db)
+    return svc.get_alerts(days_ahead=days_ahead)

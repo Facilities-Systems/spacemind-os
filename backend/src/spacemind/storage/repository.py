@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from spacemind.core.exceptions import StorageError
 from spacemind.core.logging import log
 from spacemind.domain.models import (
+    Asset,
+    AssetMaintenanceLog,
     DecompositionRecord,
     FloorPlan,
     InventoryItem,
@@ -23,6 +25,8 @@ from spacemind.domain.models import (
     Supplier,
 )
 from spacemind.domain.schemas import (
+    AssetCreate,
+    AssetUpdate,
     DecompositionResult,
     DecompositionSummary,
     FloorPlanCreate,
@@ -31,6 +35,7 @@ from spacemind.domain.schemas import (
     IncidentStatusUpdate,
     InventoryItemCreate,
     InventoryItemUpdate,
+    MaintenanceLogCreate,
     MedicalItemCreate,
     SupplierCreate,
     SupplierUpdate,
@@ -621,6 +626,35 @@ class MedicalRepository:
             "critical_incidents": critical_incidents,
         }
 
+    def get_expiring_items(self, days_ahead: int = 30) -> List[MedicalItem]:
+        from datetime import date, timedelta
+        today = date.today()
+        cutoff = today + timedelta(days=days_ahead)
+        return (
+            self.db.query(MedicalItem)
+            .filter(MedicalItem.expiry_date != None, MedicalItem.expiry_date >= today, MedicalItem.expiry_date <= cutoff)  # noqa: E711
+            .order_by(MedicalItem.expiry_date)
+            .all()
+        )
+
+    def get_expired_items(self) -> List[MedicalItem]:
+        from datetime import date
+        today = date.today()
+        return (
+            self.db.query(MedicalItem)
+            .filter(MedicalItem.expiry_date != None, MedicalItem.expiry_date < today)  # noqa: E711
+            .order_by(MedicalItem.expiry_date)
+            .all()
+        )
+
+    def get_low_stock_items(self) -> List[MedicalItem]:
+        return (
+            self.db.query(MedicalItem)
+            .filter(MedicalItem.quantity <= MedicalItem.min_level, MedicalItem.min_level > 0)
+            .order_by(MedicalItem.quantity)
+            .all()
+        )
+
 
 # ─── Supplier Repository ──────────────────────────────────────────────────────
 
@@ -740,3 +774,158 @@ class FloorPlanRepository:
         except SQLAlchemyError as e:
             self.db.rollback()
             raise StorageError() from e
+
+
+# ─── Asset Repository ────────────────────────────────────────────────────────
+
+class AssetRepository:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def list_assets(self, category: str | None = None, status: str | None = None,
+                    location_id: str | None = None) -> List[Asset]:
+        q = self.db.query(Asset)
+        if category:
+            q = q.filter(Asset.category == category)
+        if status:
+            q = q.filter(Asset.status == status)
+        if location_id:
+            q = q.filter(Asset.location_id == location_id)
+        return q.order_by(Asset.name).all()
+
+    def get_asset(self, asset_id: str) -> Optional[Asset]:
+        return self.db.query(Asset).filter(Asset.id == asset_id).first()
+
+    def get_asset_by_code(self, asset_code: str) -> Optional[Asset]:
+        return self.db.query(Asset).filter(Asset.asset_code == asset_code).first()
+
+    def create_asset(self, data: AssetCreate) -> Asset:
+        from spacemind.core.validators import validate_not_blank
+        validate_not_blank(data.name, "name")
+        validate_not_blank(data.asset_code, "asset_code")
+        if self.get_asset_by_code(data.asset_code):
+            from spacemind.core.exceptions import ValidationError
+            raise ValidationError(f"Asset code '{data.asset_code}' already exists.")
+        asset_id = str(__import__("uuid").uuid4())
+        purchase_date = None
+        if data.purchase_date:
+            purchase_date = datetime.fromisoformat(data.purchase_date)
+        asset = Asset(
+            id=asset_id,
+            name=data.name,
+            asset_code=data.asset_code,
+            category=data.category,
+            location_id=data.location_id,
+            floor_plan_id=data.floor_plan_id,
+            purchase_date=purchase_date,
+            purchase_cost=data.purchase_cost,
+            current_value=data.purchase_cost,
+            depreciation_method=data.depreciation_method,
+            useful_life_years=data.useful_life_years,
+            condition_score=data.condition_score,
+            supplier_id=data.supplier_id,
+            notes=data.notes,
+        )
+        try:
+            self.db.add(asset)
+            self.db.commit()
+            self.db.refresh(asset)
+            return asset
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def update_asset(self, asset_id: str, data: AssetUpdate) -> Optional[Asset]:
+        asset = self.get_asset(asset_id)
+        if not asset:
+            return None
+        for field, value in data.model_dump(exclude_none=True).items():
+            if field in ("purchase_date", "last_maintained_at", "next_maintenance_due") and value:
+                value = datetime.fromisoformat(value)
+            setattr(asset, field, value)
+        try:
+            self.db.commit()
+            self.db.refresh(asset)
+            return asset
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def decommission_asset(self, asset_id: str) -> bool:
+        asset = self.get_asset(asset_id)
+        if not asset:
+            return False
+        asset.status = "decommissioned"
+        try:
+            self.db.commit()
+            return True
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def add_maintenance_log(self, asset_id: str, data: MaintenanceLogCreate,
+                            created_by: str | None = None) -> Optional[AssetMaintenanceLog]:
+        asset = self.get_asset(asset_id)
+        if not asset:
+            return None
+        log_entry = AssetMaintenanceLog(
+            id=str(__import__("uuid").uuid4()),
+            asset_id=asset_id,
+            maintenance_type=data.maintenance_type,
+            description=data.description,
+            cost=data.cost,
+            performed_by=data.performed_by,
+            performed_at=datetime.fromisoformat(data.performed_at),
+            condition_before=data.condition_before,
+            condition_after=data.condition_after,
+            notes=data.notes,
+            created_by=created_by,
+        )
+        if data.condition_after is not None:
+            asset.condition_score = data.condition_after
+        asset.last_maintained_at = datetime.fromisoformat(data.performed_at)
+        try:
+            self.db.add(log_entry)
+            self.db.commit()
+            self.db.refresh(log_entry)
+            return log_entry
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise StorageError() from e
+
+    def get_maintenance_history(self, asset_id: str) -> List[AssetMaintenanceLog]:
+        return (
+            self.db.query(AssetMaintenanceLog)
+            .filter(AssetMaintenanceLog.asset_id == asset_id)
+            .order_by(AssetMaintenanceLog.performed_at.desc())
+            .all()
+        )
+
+    def get_analytics(self) -> dict:
+        from datetime import date
+        from sqlalchemy import func
+        all_assets = self.db.query(Asset).all()
+        total = len(all_assets)
+        active = sum(1 for a in all_assets if a.status == "active")
+        under_maint = sum(1 for a in all_assets if a.status == "under_maintenance")
+        decommissioned = sum(1 for a in all_assets if a.status == "decommissioned")
+        scores = [a.condition_score for a in all_assets if a.condition_score is not None]
+        avg_condition = round(sum(scores) / len(scores), 2) if scores else 0.0
+        values = [a.current_value for a in all_assets if a.current_value is not None]
+        total_value = round(sum(values), 2)
+        today = datetime.now(UTC).date()
+        overdue = sum(
+            1 for a in all_assets
+            if a.next_maintenance_due and a.next_maintenance_due.date() < today and a.status == "active"
+        )
+        low_condition = sum(1 for a in all_assets if a.condition_score is not None and a.condition_score < 5.0)
+        return {
+            "total_assets": total,
+            "active_count": active,
+            "under_maintenance_count": under_maint,
+            "decommissioned_count": decommissioned,
+            "avg_condition_score": avg_condition,
+            "total_portfolio_value": total_value,
+            "overdue_maintenance_count": overdue,
+            "low_condition_count": low_condition,
+        }

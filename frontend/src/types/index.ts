@@ -260,10 +260,18 @@ export interface MedicalItem {
   unit: string
   min_level: number
   expiry_date: string | null
+  equipment_serial_number: string | null
+  last_service_date: string | null
   location: string | null
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+export interface MedicalAlerts {
+  expired: MedicalItem[]
+  expiring_soon: MedicalItem[]
+  low_stock: MedicalItem[]
 }
 
 export interface MedicalIncident {
@@ -408,4 +416,55 @@ export interface InsightsSummary {
     low_stock_items: number
   }
   kpis: InsightsKpi[]
+}
+
+// ─── Assets ──────────────────────────────────────────────────────────────────
+
+export type AssetStatus = 'active' | 'under_maintenance' | 'decommissioned'
+export type MaintenanceType = 'preventive' | 'corrective' | 'inspection'
+
+export interface Asset {
+  id: string
+  name: string
+  asset_code: string
+  category: string
+  location_id: string | null
+  floor_plan_id: string | null
+  status: AssetStatus
+  purchase_date: string | null
+  purchase_cost: number | null
+  current_value: number | null
+  depreciation_method: string
+  useful_life_years: number | null
+  condition_score: number
+  last_maintained_at: string | null
+  next_maintenance_due: string | null
+  supplier_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MaintenanceLog {
+  id: string
+  asset_id: string
+  maintenance_type: MaintenanceType
+  description: string
+  cost: number | null
+  performed_by: string | null
+  performed_at: string
+  condition_before: number | null
+  condition_after: number | null
+  notes: string | null
+}
+
+export interface AssetAnalytics {
+  total_assets: number
+  active_count: number
+  under_maintenance_count: number
+  decommissioned_count: number
+  avg_condition_score: number
+  total_portfolio_value: number
+  overdue_maintenance_count: number
+  low_condition_count: number
 }

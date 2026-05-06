@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Heart, Phone, PlusCircle, ShieldCheck, Stethoscope, Thermometer } from 'lucide-react'
 import { Header } from '../components/layout/Header'
 import { useMedical } from '../hooks/useMedical'
+import { api } from '../api/client'
 
 const QUICK_ACTIONS = [
   { emoji: '📋', label: 'New Incident', desc: 'Log a medical incident or injury report' },
@@ -36,6 +38,10 @@ function itemStockStatus(qty: number, min: number): 'Critical' | 'Low' | 'Good' 
 
 export function MedicalPage() {
   const { analytics, incidents, items, isLoading } = useMedical()
+  const { data: alerts } = useQuery({
+    queryKey: ['medical-alerts'],
+    queryFn: () => api.getMedicalAlerts(30),
+  })
 
   const stats = [
     { label: 'Open Incidents',    value: analytics ? String(analytics.open_incidents)      : '—', sub: 'Requiring attention' },
@@ -91,6 +97,47 @@ export function MedicalPage() {
             </div>
           ))}
         </div>
+
+        {/* Expiry / stock alert banners */}
+        {alerts && alerts.expired.length > 0 && (
+          <div className="rounded-xl border-2 border-red-500/60 bg-red-900/20 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-300 font-semibold text-sm">
+                {alerts.expired.length} item{alerts.expired.length > 1 ? 's' : ''} EXPIRED
+              </p>
+              <p className="text-red-400/80 text-xs mt-0.5">
+                {alerts.expired.map(i => i.name).join(' · ')} — remove from service immediately
+              </p>
+            </div>
+          </div>
+        )}
+        {alerts && alerts.expiring_soon.length > 0 && (
+          <div className="rounded-xl border-2 border-amber-500/60 bg-amber-900/20 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-amber-300 font-semibold text-sm">
+                {alerts.expiring_soon.length} item{alerts.expiring_soon.length > 1 ? 's' : ''} expiring within 30 days
+              </p>
+              <p className="text-amber-400/80 text-xs mt-0.5">
+                {alerts.expiring_soon.map(i => `${i.name} (${i.expiry_date})`).join(' · ')}
+              </p>
+            </div>
+          </div>
+        )}
+        {alerts && alerts.low_stock.length > 0 && alerts.expired.length === 0 && alerts.expiring_soon.length === 0 && (
+          <div className="rounded-xl border-2 border-amber-500/60 bg-amber-900/20 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-amber-300 font-semibold text-sm">
+                {alerts.low_stock.length} item{alerts.low_stock.length > 1 ? 's' : ''} below minimum stock level
+              </p>
+              <p className="text-amber-400/80 text-xs mt-0.5">
+                {alerts.low_stock.map(i => i.name).join(' · ')}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

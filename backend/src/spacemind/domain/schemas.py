@@ -4,7 +4,7 @@ The contract between the AI engine and the outside world.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, List, Optional
 from uuid import uuid4
 
@@ -93,7 +93,7 @@ class LocationContext(BaseModel):
 
 class DecompositionResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # What was asked
     request_summary: str
@@ -252,6 +252,8 @@ class MedicalItemCreate(BaseModel):
     unit: str = Field(default="units", max_length=20)
     min_level: int = Field(default=0, ge=0)
     expiry_date: Optional[str] = None   # ISO date string YYYY-MM-DD
+    equipment_serial_number: Optional[str] = None
+    last_service_date: Optional[str] = None   # ISO datetime string
     location: Optional[str] = None
     notes: Optional[str] = None
 
@@ -263,6 +265,8 @@ class MedicalItemUpdate(BaseModel):
     unit: Optional[str] = None
     min_level: Optional[int] = Field(default=None, ge=0)
     expiry_date: Optional[str] = None
+    equipment_serial_number: Optional[str] = None
+    last_service_date: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
 
@@ -275,6 +279,8 @@ class MedicalItemOut(BaseModel):
     unit: str
     min_level: int
     expiry_date: Optional[str]
+    equipment_serial_number: Optional[str]
+    last_service_date: Optional[datetime]
     location: Optional[str]
     notes: Optional[str]
     created_at: datetime
@@ -317,6 +323,12 @@ class MedicalAnalytics(BaseModel):
     expiring_soon_count: int
     open_incidents: int
     critical_incidents: int
+
+
+class MedicalAlerts(BaseModel):
+    expired: List[MedicalItemOut]
+    expiring_soon: List[MedicalItemOut]
+    low_stock: List[MedicalItemOut]
 
 
 # ─── Supplier schemas ─────────────────────────────────────────────────────────
@@ -400,3 +412,98 @@ class FloorPlanOut(BaseModel):
     updated_at:     datetime
 
     model_config = {"from_attributes": True}
+
+
+# ─── Asset schemas ────────────────────────────────────────────────────────────
+
+class AssetCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    asset_code: str = Field(..., min_length=1, max_length=50)
+    category: str = Field(..., min_length=1, max_length=50)
+    location_id: Optional[str] = None
+    floor_plan_id: Optional[str] = None
+    purchase_date: Optional[str] = None      # ISO datetime
+    purchase_cost: Optional[float] = Field(default=None, ge=0)
+    useful_life_years: Optional[int] = Field(default=None, ge=1)
+    condition_score: float = Field(default=10.0, ge=0.0, le=10.0)
+    depreciation_method: str = "straight_line"
+    supplier_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    location_id: Optional[str] = None
+    floor_plan_id: Optional[str] = None
+    status: Optional[str] = None
+    purchase_date: Optional[str] = None
+    purchase_cost: Optional[float] = Field(default=None, ge=0)
+    current_value: Optional[float] = Field(default=None, ge=0)
+    useful_life_years: Optional[int] = Field(default=None, ge=1)
+    condition_score: Optional[float] = Field(default=None, ge=0.0, le=10.0)
+    last_maintained_at: Optional[str] = None
+    next_maintenance_due: Optional[str] = None
+    supplier_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class AssetOut(BaseModel):
+    id: str
+    name: str
+    asset_code: str
+    category: str
+    location_id: Optional[str]
+    floor_plan_id: Optional[str]
+    status: str
+    purchase_date: Optional[datetime]
+    purchase_cost: Optional[float]
+    current_value: Optional[float]
+    depreciation_method: str
+    useful_life_years: Optional[int]
+    condition_score: float
+    last_maintained_at: Optional[datetime]
+    next_maintenance_due: Optional[datetime]
+    supplier_id: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MaintenanceLogCreate(BaseModel):
+    maintenance_type: str = Field(..., pattern="^(preventive|corrective|inspection)$")
+    description: str = Field(..., min_length=1)
+    cost: Optional[float] = Field(default=None, ge=0)
+    performed_by: Optional[str] = None
+    performed_at: str   # ISO datetime
+    condition_before: Optional[float] = Field(default=None, ge=0.0, le=10.0)
+    condition_after: Optional[float] = Field(default=None, ge=0.0, le=10.0)
+    notes: Optional[str] = None
+
+
+class MaintenanceLogOut(BaseModel):
+    id: str
+    asset_id: str
+    maintenance_type: str
+    description: str
+    cost: Optional[float]
+    performed_by: Optional[str]
+    performed_at: datetime
+    condition_before: Optional[float]
+    condition_after: Optional[float]
+    notes: Optional[str]
+
+    model_config = {"from_attributes": True}
+
+
+class AssetAnalytics(BaseModel):
+    total_assets: int
+    active_count: int
+    under_maintenance_count: int
+    decommissioned_count: int
+    avg_condition_score: float
+    total_portfolio_value: float
+    overdue_maintenance_count: int
+    low_condition_count: int   # condition_score < 5

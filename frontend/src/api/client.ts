@@ -1,6 +1,8 @@
 import axios from 'axios'
 import type {
   AdminDashboard,
+  Asset,
+  AssetAnalytics,
   AuditLogResponse,
   ComplianceAnalytics,
   DecompositionRequest,
@@ -14,6 +16,8 @@ import type {
   InventoryItem,
   ItemQr,
   Location,
+  MaintenanceLog,
+  MedicalAlerts,
   MedicalAnalytics,
   MedicalIncident,
   MedicalItem,
@@ -253,6 +257,11 @@ export const api = {
     return data
   },
 
+  getMedicalAlerts: async (daysAhead = 30): Promise<MedicalAlerts> => {
+    const { data } = await http.get<MedicalAlerts>('/medical/alerts', { params: { days_ahead: daysAhead } })
+    return data
+  },
+
   // ── Suppliers ────────────────────────────────────────────────────────────────
 
   getSuppliers: async (activeOnly = false): Promise<Supplier[]> => {
@@ -326,6 +335,52 @@ export const api = {
 
   getInsightsSummary: async (): Promise<InsightsSummary> => {
     const { data } = await http.get<InsightsSummary>('/insights/summary')
+    return data
+  },
+
+  // ── Assets ──────────────────────────────────────────────────────────────────
+
+  getAssets: async (params?: { category?: string; status?: string; location_id?: string }): Promise<Asset[]> => {
+    const { data } = await http.get<Asset[]>('/assets', { params })
+    return data
+  },
+
+  getAsset: async (id: string): Promise<Asset> => {
+    const { data } = await http.get<Asset>(`/assets/${id}`)
+    return data
+  },
+
+  createAsset: async (payload: Omit<Asset, 'id' | 'created_at' | 'updated_at' | 'status'>): Promise<Asset> => {
+    const { data } = await http.post<Asset>('/assets', payload)
+    return data
+  },
+
+  updateAsset: async (id: string, payload: Partial<Asset>): Promise<Asset> => {
+    const { data } = await http.patch<Asset>(`/assets/${id}`, payload)
+    return data
+  },
+
+  decommissionAsset: async (id: string): Promise<void> => {
+    await http.delete(`/assets/${id}`)
+  },
+
+  getAssetHistory: async (id: string): Promise<MaintenanceLog[]> => {
+    const { data } = await http.get<MaintenanceLog[]>(`/assets/${id}/history`)
+    return data
+  },
+
+  logMaintenance: async (id: string, payload: Omit<MaintenanceLog, 'id' | 'asset_id'>): Promise<MaintenanceLog> => {
+    const { data } = await http.post<MaintenanceLog>(`/assets/${id}/maintenance`, payload)
+    return data
+  },
+
+  getAssetAnalytics: async (): Promise<AssetAnalytics> => {
+    const { data } = await http.get<AssetAnalytics>('/assets/analytics')
+    return data
+  },
+
+  analyseAsset: async (id: string): Promise<{ asset_id: string; analysis: string }> => {
+    const { data } = await http.post<{ asset_id: string; analysis: string }>(`/assets/${id}/analyse`)
     return data
   },
 }

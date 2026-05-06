@@ -1,9 +1,9 @@
 """General utilities."""
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def now_iso() -> str:
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(UTC).isoformat()
 
 
 def truncate(text: str, max_len: int = 100) -> str:

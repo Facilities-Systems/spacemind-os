@@ -6,7 +6,7 @@ Uses reportlab for PDF generation.
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -92,7 +92,7 @@ class ExportService:
 
         story.append(Paragraph("SpaceMind OS — Execution Plan", title_style))
         story.append(Paragraph(
-            f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} &nbsp;|&nbsp; "
+            f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} &nbsp;|&nbsp; "
             f"ID: {result.id[:8]}",
             sub_style,
         ))
@@ -220,7 +220,7 @@ class ExportService:
             ],
             "Value": [
                 result.id[:8],
-                datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+                datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
                 result.request_summary,
                 result.request_type.value.replace("_", " ").title(),
                 result.location_context.location_id,
@@ -299,7 +299,7 @@ class ExportService:
         lines: list[str] = []
         lines.append(f"# SpaceMind OS — Execution Plan")
         lines.append(f"")
-        lines.append(f"**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}  ")
+        lines.append(f"**Generated:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}  ")
         lines.append(f"**Plan ID:** `{result.id[:8]}`")
         lines.append(f"")
         lines.append(f"---")

@@ -4,7 +4,7 @@ Persistence layer — keeps every decomposition in history and manages users.
 """
 from datetime import datetime, UTC
 
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -160,7 +160,9 @@ class MedicalItem(Base):
     quantity = Column(Integer, nullable=False, default=0)
     unit = Column(String(20), nullable=False, default="units")
     min_level = Column(Integer, nullable=False, default=0)
-    expiry_date = Column(Date, nullable=True)
+    expiry_date              = Column(Date,         nullable=True)
+    equipment_serial_number  = Column(String(100),  nullable=True)
+    last_service_date        = Column(DateTime,     nullable=True)
     location = Column(String(200), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
@@ -242,3 +244,55 @@ class FloorPlan(Base):
 
     def __repr__(self) -> str:
         return f"<FloorPlan {self.building_id} / {self.floor_name}>"
+
+
+# ─── Assets ───────────────────────────────────────────────────────────────────
+
+class Asset(Base):
+    """Physical asset tracked through its full lifecycle — purchase → maintenance → decommission."""
+
+    __tablename__ = "assets"
+
+    id                   = Column(String(36),  primary_key=True)
+    name                 = Column(String(200), nullable=False)
+    asset_code           = Column(String(50),  unique=True, index=True, nullable=False)
+    category             = Column(String(50),  nullable=False, index=True)
+    location_id          = Column(String(50),  nullable=True)
+    floor_plan_id        = Column(String(36),  ForeignKey("floor_plans.id", ondelete="SET NULL"), nullable=True)
+    status               = Column(String(30),  default="active", nullable=False, index=True)
+    purchase_date        = Column(DateTime,    nullable=True)
+    purchase_cost        = Column(Float,       nullable=True)
+    current_value        = Column(Float,       nullable=True)
+    depreciation_method  = Column(String(30),  default="straight_line")
+    useful_life_years    = Column(Integer,     nullable=True)
+    condition_score      = Column(Float,       default=10.0)   # 0.0–10.0
+    last_maintained_at   = Column(DateTime,    nullable=True)
+    next_maintenance_due = Column(DateTime,    nullable=True)
+    supplier_id          = Column(String(36),  ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True)
+    notes                = Column(Text,        nullable=True)
+    created_at           = Column(DateTime,    default=lambda: datetime.now(UTC), nullable=False)
+    updated_at           = Column(DateTime,    default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Asset code={self.asset_code} status={self.status} condition={self.condition_score}>"
+
+
+class AssetMaintenanceLog(Base):
+    """One row per maintenance event on an asset."""
+
+    __tablename__ = "asset_maintenance_logs"
+
+    id               = Column(String(36), primary_key=True)
+    asset_id         = Column(String(36), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False, index=True)
+    maintenance_type = Column(String(50), nullable=False)   # preventive / corrective / inspection
+    description      = Column(Text,       nullable=False)
+    cost             = Column(Float,      nullable=True)
+    performed_by     = Column(String(100), nullable=True)
+    performed_at     = Column(DateTime,   nullable=False)
+    condition_before = Column(Float,      nullable=True)
+    condition_after  = Column(Float,      nullable=True)
+    notes            = Column(Text,       nullable=True)
+    created_by       = Column(String(36), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<AssetMaintenanceLog asset={self.asset_id} type={self.maintenance_type}>"
