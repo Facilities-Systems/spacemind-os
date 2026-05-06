@@ -419,4 +419,11 @@ export const api = {
     const { data } = await http.post<{ analysis: string }>('/sensors/analyse')
     return data
   },
+
+  // ── AI Concierge Chat ────────────────────────────────────────────────────────
+
+  chat: async (messages: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<{ reply: string }> => {
+    const { data } = await http.post<{ reply: string }>('/chat', { messages })
+    return data
+  },
 }
