@@ -92,6 +92,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Unit tests (Vitest)
+        run: npm test
+
       - name: Build (smoke test)
         run: npm run build
         env:

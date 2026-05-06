@@ -77,10 +77,11 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                <label htmlFor="auth-fullname" className="block text-sm font-medium text-gray-300 mb-1.5">
                   Full Name
                 </label>
                 <input
+                  id="auth-fullname"
                   type="text"
                   required
                   value={fullName}
@@ -92,10 +93,11 @@ export function LoginPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="auth-email" className="block text-sm font-medium text-gray-300 mb-1.5">
                 Email
               </label>
               <input
+                id="auth-email"
                 type="email"
                 required
                 value={email}
@@ -106,11 +108,12 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="auth-password" className="block text-sm font-medium text-gray-300 mb-1.5">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="auth-password"
                   type={showPass ? 'text' : 'password'}
                   required
                   minLength={8}
@@ -121,6 +124,7 @@ export function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPass((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                 >

@@ -100,10 +100,11 @@ export function RequestForm({ onSubmit, isLoading, selectedOp, onChangeType }: R
 
       {/* Main request input */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
+        <label htmlFor="request-text" className="block text-sm font-medium text-gray-300 mb-2">
           Facilities Request
         </label>
         <textarea
+          id="request-text"
           {...register('request_text')}
           disabled={isLoading}
           rows={5}
@@ -136,8 +137,9 @@ export function RequestForm({ onSubmit, isLoading, selectedOp, onChangeType }: R
       {/* Location + Priority row */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Location</label>
+          <label htmlFor="location-select" className="block text-sm font-medium text-gray-300 mb-2">Location</label>
           <select
+            id="location-select"
             {...register('location_id')}
             disabled={isLoading}
             className={clsx(
