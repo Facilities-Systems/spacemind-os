@@ -107,7 +107,8 @@ export function StreamingResult({ request, onComplete, onError }: Props) {
         const decoder = new TextDecoder()
         let buffer = ''
 
-        while (true) {
+        // eslint-disable-next-line no-constant-condition
+        for (;;) {
           const { done, value } = await reader.read()
           if (done) break
 
