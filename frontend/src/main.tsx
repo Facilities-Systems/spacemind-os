@@ -1,7 +1,22 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import './index.css'
+
+// Register service worker in production only — dev mode keeps SW disabled in vite.config.ts
+if (import.meta.env.PROD) {
+  registerSW({
+    onOfflineReady() {
+      console.info('[PWA] SpaceMind OS is ready to work offline.')
+    },
+    onNeedRefresh() {
+      // New version available — reload to pick it up
+      // In a future iteration this could show a toast with a manual refresh button
+      window.location.reload()
+    },
+  })
+}
 
 // ─── Sentry (only initialised if VITE_SENTRY_DSN is set) ─────────────────────
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN as string | undefined
