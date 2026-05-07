@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 
 from spacemind.ai.client import AIClient
 from spacemind.core.config import settings
+from spacemind.core.exceptions import ValidationError
+from spacemind.core.guardrails import scan_for_injection
 from spacemind.core.logging import log
 from spacemind.services.medical_service import MedicalService
 from spacemind.services.sensor_service import SensorService
@@ -107,6 +109,15 @@ class ChatService:
         messages: list of {role: 'user'|'assistant', content: str}
         Returns the assistant's reply as a string.
         """
+        # Guard: scan last user message for prompt injection before touching the AI
+        user_messages = [m for m in messages if m.get("role") == "user"]
+        if user_messages:
+            try:
+                scan_for_injection(user_messages[-1].get("content", ""), context="chat message")
+            except ValidationError:
+                log.info("[Guardrails] Chat message blocked — returning safe response")
+                return "I'm not able to process that request. Please describe your facilities question in plain language."
+
         context = self._build_context()
         system = f"{_SYSTEM_PROMPT}\n\n{context}"
 

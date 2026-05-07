@@ -5,6 +5,7 @@ Application-level orchestration: decompose + optionally persist.
 from sqlalchemy.orm import Session
 
 from spacemind.core.config import settings
+from spacemind.core.guardrails import scan_for_injection
 from spacemind.core.logging import log
 from spacemind.domain.schemas import (
     DecompositionRequest,
@@ -33,6 +34,11 @@ class DecompositionService:
         validated_text, validated_loc, validated_priority = validate_decomposition_request(
             request.request_text, request.location_id, request.priority
         )
+        # Phase C: prompt injection guard — scan validated text before sending to AI
+        scan_for_injection(validated_text, context="request text")
+        if request.additional_context:
+            scan_for_injection(request.additional_context, context="additional context")
+
         request = request.model_copy(update={
             "request_text": validated_text,
             "location_id": validated_loc,

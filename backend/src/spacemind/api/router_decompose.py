@@ -3,7 +3,7 @@ SpaceMind OS — Decompose & Orchestrate Routes
 POST /api/v1/decompose   — single-pass AI decomposition
 POST /api/v1/orchestrate — multi-agent decomposition
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -20,7 +20,7 @@ from spacemind.services.orchestration_service import OrchestrationService
 from spacemind.storage.database import get_db
 
 router = APIRouter(prefix="/api/v1", tags=["Decompose"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
 
 DECOMPOSE_RATE = getattr(settings, "decompose_rate_limit", "10/minute")
 
@@ -41,6 +41,7 @@ def get_orchestration_service(db: Session = Depends(get_db)) -> OrchestrationSer
 @limiter.limit(DECOMPOSE_RATE)
 def decompose(
     request: Request,
+    response: Response,
     body: DecompositionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("facilities_manager", "admin")),
@@ -78,6 +79,7 @@ def decompose(
 @limiter.limit(DECOMPOSE_RATE)
 def orchestrate(
     request: Request,
+    response: Response,
     body: DecompositionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("facilities_manager", "admin")),
@@ -120,6 +122,7 @@ def orchestrate(
 @limiter.limit(DECOMPOSE_RATE)
 async def orchestrate_stream(
     request: Request,
+    response: Response,
     body: DecompositionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("facilities_manager", "admin")),

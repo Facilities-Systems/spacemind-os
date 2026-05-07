@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 import pytest
 from unittest.mock import MagicMock
 
-from spacemind.engine.validator import ResultValidator
+from spacemind.engine.validator import ResultValidator, MAX_PHASES, MAX_TASKS_PER_PHASE
 from spacemind.core.exceptions import ValidationError
 from spacemind.domain.schemas import DecompositionResult, Phase, TaskItem, ResponsibleParty, LocationContext
 from spacemind.core.constants import RequestType, TenureType, ResponsiblePartyType, RiskLevel, PhaseStatus
@@ -82,3 +82,39 @@ def test_negative_duration_raises():
     result = make_result(phases=[Phase(name="P1", order=1, tasks=[task])])
     with pytest.raises(ValidationError, match="negative duration"):
         validator.validate(result)
+
+
+# ─── Hard constraint: max phases ──────────────────────────────────────────────
+
+def test_excess_phases_trimmed_silently():
+    validator = ResultValidator()
+    phases = [Phase(name=f"Phase {i}", order=i, tasks=[make_task(task_id=f"t{i:02d}")]) for i in range(1, MAX_PHASES + 3)]
+    result = make_result(phases=phases)
+    validator.validate(result)
+    assert len(result.phases) == MAX_PHASES
+
+
+def test_exactly_max_phases_passes():
+    validator = ResultValidator()
+    phases = [Phase(name=f"Phase {i}", order=i, tasks=[make_task(task_id=f"t{i:02d}")]) for i in range(1, MAX_PHASES + 1)]
+    result = make_result(phases=phases)
+    validator.validate(result)
+    assert len(result.phases) == MAX_PHASES
+
+
+# ─── Hard constraint: max tasks per phase ─────────────────────────────────────
+
+def test_excess_tasks_trimmed_silently():
+    validator = ResultValidator()
+    tasks = [make_task(name=f"Task {i}", task_id=f"t{i:02d}") for i in range(MAX_TASKS_PER_PHASE + 5)]
+    result = make_result(phases=[Phase(name="Big Phase", order=1, tasks=tasks)])
+    validator.validate(result)
+    assert len(result.phases[0].tasks) == MAX_TASKS_PER_PHASE
+
+
+def test_total_tasks_recalculated_after_trim():
+    validator = ResultValidator()
+    tasks = [make_task(name=f"Task {i}", task_id=f"t{i:02d}") for i in range(MAX_TASKS_PER_PHASE + 5)]
+    result = make_result(phases=[Phase(name="Big Phase", order=1, tasks=tasks)])
+    validator.validate(result)
+    assert result.total_tasks == MAX_TASKS_PER_PHASE
