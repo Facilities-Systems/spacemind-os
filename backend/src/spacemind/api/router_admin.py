@@ -1,10 +1,12 @@
 """
 SpaceMind OS — Admin Router
-GET /api/v1/admin/dashboard   — system overview (admin only)
-GET /api/v1/admin/audit-log   — paginated audit trail (admin only)
+GET  /api/v1/admin/dashboard                  — system overview (admin only)
+GET  /api/v1/admin/audit-log                  — paginated audit trail (admin only)
+POST /api/v1/admin/trigger-maintenance-check  — on-demand maintenance alert run
+POST /api/v1/admin/trigger-medical-expiry     — on-demand medical expiry run
 """
 from datetime import datetime, UTC, timedelta
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -13,6 +15,7 @@ from sqlalchemy.orm import Session
 from spacemind.api.auth import require_role
 from spacemind.domain.models import AuditLog, DecompositionRecord, User
 from spacemind.storage.database import get_db
+from spacemind.workers.tasks import run_maintenance_check, run_medical_expiry_check
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -94,6 +97,23 @@ def admin_dashboard(
         users=[UserSummary.model_validate(u) for u in users],
         recent_audit=[AuditEntry.model_validate(e) for e in recent_audit],
     )
+
+
+@router.post("/trigger-maintenance-check", summary="Run maintenance alert check now")
+def trigger_maintenance_check(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+) -> Dict[str, Any]:
+    return run_maintenance_check(db)
+
+
+@router.post("/trigger-medical-expiry", summary="Run medical expiry check now")
+def trigger_medical_expiry(
+    days_ahead: int = Query(default=30, ge=1, le=365),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+) -> Dict[str, Any]:
+    return run_medical_expiry_check(db, days_ahead=days_ahead)
 
 
 @router.get("/audit-log", response_model=AuditLogResponse)

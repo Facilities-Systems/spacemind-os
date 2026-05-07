@@ -14,6 +14,7 @@ services:
       - ./backend/data:/app/data
     depends_on:
       - db
+      - redis
     restart: unless-stopped
 
   db:
@@ -28,6 +29,52 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A spacemind.workers.celery_app worker --loglevel=info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/data:/app/data
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A spacemind.workers.celery_app beat --loglevel=info --scheduler celery.beat.PersistentScheduler
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/data:/app/data
+      - beatdata:/app/beat
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
@@ -40,3 +87,5 @@ services:
 
 volumes:
   pgdata:
+  redisdata:
+  beatdata:

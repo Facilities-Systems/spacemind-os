@@ -58,6 +58,10 @@ openpyxl>=3.1.0
 # QR code generation (Phase 2.1)
 qrcode[pil]>=7.4.2
 
+# Phase F — Background Jobs
+celery[redis]>=5.4.0
+redis>=5.0.0
+
 # Dev
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
