@@ -49,21 +49,21 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* Global search trigger */}
         <button
           onClick={() => setSearchOpen(true)}
-          title="Search (Ctrl+K)"
-          className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-surface-border bg-surface-card text-gray-400 hover:text-white hover:border-brand-700/60 transition-all text-xs"
+          aria-label="Search (Ctrl+K)"
+          className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-surface-border bg-surface-card text-gray-400 hover:text-white hover:border-brand-700/60 transition-all text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
         >
-          <Search className="h-4 w-4" />
+          <Search className="h-4 w-4" aria-hidden="true" />
           <span className="text-gray-500">Search</span>
-          <kbd className="ml-1 rounded border border-[#334155] px-1 py-0.5 text-[10px] font-mono text-gray-600">⌃K</kbd>
+          <kbd className="ml-1 rounded border border-[#334155] px-1 py-0.5 text-[10px] font-mono text-gray-600" aria-hidden="true">⌃K</kbd>
         </button>
 
         {/* Mobile search icon only */}
         <button
           onClick={() => setSearchOpen(true)}
-          title="Search"
-          className="sm:hidden h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-white hover:border-brand-700/60 transition-all"
+          aria-label="Open search"
+          className="sm:hidden h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-white hover:border-brand-700/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
         >
-          <Search className="h-4 w-4" />
+          <Search className="h-4 w-4" aria-hidden="true" />
         </button>
 
         <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
@@ -71,15 +71,18 @@ export function Header({ title, subtitle }: HeaderProps) {
         {canInstall && (
           <button
             onClick={install}
-            title="Install SpaceMind OS"
-            className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-lg border border-teal-700/60 bg-teal-900/30 text-teal-300 hover:bg-teal-800/40 hover:text-teal-200 transition-all text-xs font-medium"
+            aria-label="Install SpaceMind OS as an app"
+            className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-lg border border-teal-700/60 bg-teal-900/30 text-teal-300 hover:bg-teal-800/40 hover:text-teal-200 transition-all text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
             Install App
           </button>
         )}
-        <button className="h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-white hover:border-brand-700/60 transition-all">
-          <Bell className="h-4 w-4" />
+        <button
+          aria-label="Notifications"
+          className="h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-white hover:border-brand-700/60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+        >
+          <Bell className="h-4 w-4" aria-hidden="true" />
         </button>
 
         {/* User avatar + name */}
@@ -98,10 +101,10 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* Logout */}
         <button
           onClick={handleLogout}
-          title="Sign out"
-          className="h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-red-400 hover:border-red-700/40 transition-all"
+          aria-label="Sign out"
+          className="h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-red-400 hover:border-red-700/40 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </header>

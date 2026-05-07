@@ -10,6 +10,14 @@ export function Layout() {
 
   return (
     <ErrorBoundary>
+      {/* Skip navigation — visible on focus, hidden otherwise (WCAG 2.4.1) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-600 focus:text-white focus:text-sm focus:font-medium focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       <div className="flex h-screen overflow-hidden bg-surface font-sans">
 
         {/* ── Desktop sidebar — width transitions to 0 when collapsed ─── */}
@@ -39,12 +47,13 @@ export function Layout() {
           >
             <button
               onClick={() => setCollapsed(v => !v)}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="flex items-center gap-2 px-2 py-1 rounded-lg transition-all text-gray-500 hover:text-white hover:bg-white/5"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!collapsed}
+              className="flex items-center gap-2 px-2 py-1 rounded-lg transition-all text-gray-500 hover:text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
             >
               {collapsed
-                ? <PanelLeftOpen  className="h-4 w-4" />
-                : <PanelLeftClose className="h-4 w-4" />
+                ? <PanelLeftOpen  className="h-4 w-4" aria-hidden="true" />
+                : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
               }
               <span className="text-xs font-medium select-none">
                 {collapsed ? 'Show sidebar' : 'Hide sidebar'}
@@ -56,15 +65,15 @@ export function Layout() {
           <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-surface-border bg-surface-card shrink-0">
             <button
               onClick={() => setMobileOpen(true)}
-              className="text-gray-400 hover:text-white"
-              aria-label="Open menu"
+              className="text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 rounded"
+              aria-label="Open navigation menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
             </button>
             <p className="font-bold text-white text-sm">SpaceMind OS</p>
           </div>
 
-          <main className="flex-1 overflow-y-auto">
+          <main id="main-content" className="flex-1 overflow-y-auto" tabIndex={-1}>
             <Outlet />
           </main>
         </div>

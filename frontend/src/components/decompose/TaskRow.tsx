@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { AlertTriangle, ChevronDown, Clock, Lock } from 'lucide-react'
 import { clsx } from 'clsx'
 import { RiskBadge, ResponsibleBadge } from '../ui/Badge'
@@ -27,10 +27,12 @@ interface TaskRowProps {
   onStatusChange?: (taskId: string, status: PhaseStatus) => void
 }
 
-export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRowProps) {
+export const TaskRow = memo(function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRowProps) {
   const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<PhaseStatus>(task.status)
   const [updating, setUpdating] = useState(false)
+
+  const panelId = `task-panel-${task.id}`
 
   const handleStatusChange = async (newStatus: PhaseStatus) => {
     if (!decompositionId || newStatus === status) return
@@ -52,10 +54,12 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-muted/40 transition-all"
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-muted/40 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset"
       >
         {/* Index */}
-        <span className="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center text-xs text-gray-500 font-mono">
+        <span className="shrink-0 mt-0.5 h-5 w-5 rounded-full bg-surface-muted border border-surface-border flex items-center justify-center text-xs text-gray-500 font-mono" aria-hidden="true">
           {index + 1}
         </span>
 
@@ -66,7 +70,7 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
             </span>
             {task.landlord_approval_required && (
               <span className="inline-flex items-center gap-1 text-xs text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded px-1.5 py-0.5">
-                <Lock className="h-2.5 w-2.5" /> Landlord
+                <Lock className="h-2.5 w-2.5" aria-hidden="true" /> Landlord approval required
               </span>
             )}
           </div>
@@ -75,23 +79,26 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
             <RiskBadge level={task.risk_level} />
             {task.estimated_duration_hours && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                <Clock className="h-3 w-3" />
-                {task.estimated_duration_hours}h
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                <span>{task.estimated_duration_hours}h</span>
               </span>
             )}
           </div>
         </div>
 
         {/* Status badge */}
-        <span className={clsx('shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium', STATUS_STYLES[status])}>
+        <span className={clsx('shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium', STATUS_STYLES[status])} aria-label={`Status: ${STATUS_LABELS[status]}`}>
           {STATUS_LABELS[status]}
         </span>
 
-        <ChevronDown className={clsx('h-4 w-4 text-gray-500 shrink-0 mt-0.5 transition-transform', open && 'rotate-180')} />
+        <ChevronDown
+          className={clsx('h-4 w-4 text-gray-500 shrink-0 mt-0.5 transition-transform', open && 'rotate-180')}
+          aria-hidden="true"
+        />
       </button>
 
       {open && (
-        <div className="px-4 pb-4 pt-1 border-t border-surface-border space-y-3 animate-fade-in bg-surface-muted/20">
+        <div id={panelId} className="px-4 pb-4 pt-1 border-t border-surface-border space-y-3 animate-fade-in bg-surface-muted/20">
           {task.description && (
             <p className="text-sm text-gray-400">{task.description}</p>
           )}
@@ -102,15 +109,18 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
           {/* Status selector */}
           {decompositionId && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Update Status</p>
-              <div className="flex flex-wrap gap-1.5">
+              <p id={`status-label-${task.id}`} className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Update Status</p>
+              <div role="group" aria-labelledby={`status-label-${task.id}`} className="flex flex-wrap gap-1.5">
                 {(Object.keys(STATUS_LABELS) as PhaseStatus[]).map((s) => (
                   <button
                     key={s}
+                    type="button"
                     disabled={updating || s === status}
+                    aria-pressed={s === status}
+                    aria-label={`Set status to ${STATUS_LABELS[s]}`}
                     onClick={(e) => { e.stopPropagation(); handleStatusChange(s) }}
                     className={clsx(
-                      'text-xs px-2.5 py-1 rounded-full border font-medium transition-all',
+                      'text-xs px-2.5 py-1 rounded-full border font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500',
                       s === status
                         ? STATUS_STYLES[s] + ' opacity-100'
                         : 'bg-surface border-surface-border text-gray-500 hover:text-white hover:border-brand-700/40',
@@ -130,7 +140,7 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
               <ul className="space-y-1">
                 {task.risks.map((r, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-amber-400/80">
-                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
                     {r}
                   </li>
                 ))}
@@ -156,4 +166,4 @@ export function TaskRow({ task, index, decompositionId, onStatusChange }: TaskRo
       )}
     </div>
   )
-}
+})

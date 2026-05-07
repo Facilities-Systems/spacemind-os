@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { ChevronDown, Clock, ListChecks } from 'lucide-react'
 import { clsx } from 'clsx'
 import { TaskRow } from './TaskRow'
@@ -10,9 +10,10 @@ interface PhaseCardProps {
   decompositionId?: string
 }
 
-export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseCardProps) {
+export const PhaseCard = memo(function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const totalHours = phase.tasks.reduce((sum, t) => sum + (t.estimated_duration_hours ?? 0), 0)
+  const panelId = `phase-tasks-${phase.order}`
 
   return (
     <div className="border border-surface-border rounded-xl overflow-hidden animate-slide-up">
@@ -20,9 +21,12 @@ export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseC
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-4 px-5 py-4 bg-surface-card hover:bg-surface-muted/60 transition-all text-left"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={`${phase.name} — ${open ? 'collapse' : 'expand'} tasks`}
+        className="w-full flex items-center gap-4 px-5 py-4 bg-surface-card hover:bg-surface-muted/60 transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset"
       >
-        <div className="h-8 w-8 rounded-lg bg-brand-600/20 border border-brand-700/40 flex items-center justify-center text-brand-300 font-bold text-sm shrink-0">
+        <div className="h-8 w-8 rounded-lg bg-brand-600/20 border border-brand-700/40 flex items-center justify-center text-brand-300 font-bold text-sm shrink-0" aria-hidden="true">
           {phase.order}
         </div>
 
@@ -33,7 +37,7 @@ export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseC
           )}
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0">
+        <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0" aria-hidden="true">
           <span className="flex items-center gap-1">
             <ListChecks className="h-3.5 w-3.5" />
             {phase.tasks.length} tasks
@@ -50,7 +54,7 @@ export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseC
 
       {/* Tasks */}
       {open && (
-        <div className="px-4 pb-4 pt-1 space-y-2 bg-surface animate-fade-in">
+        <div id={panelId} className="px-4 pb-4 pt-1 space-y-2 bg-surface animate-fade-in">
           {phase.tasks.map((task, i) => (
             <TaskRow key={task.id} task={task} index={i} decompositionId={decompositionId} />
           ))}
@@ -61,4 +65,4 @@ export function PhaseCard({ phase, defaultOpen = true, decompositionId }: PhaseC
       )}
     </div>
   )
-}
+})
