@@ -526,6 +526,25 @@ export interface SensorSummary {
   total_sensors: number
 }
 
+// ─── Search ───────────────────────────────────────────────────────────────────
+
+export type SearchDomain = 'inventory' | 'assets' | 'medical' | 'history'
+
+export interface SearchResult {
+  id: string
+  domain: SearchDomain
+  title: string
+  subtitle: string
+  url: string
+  score: number
+}
+
+export interface SearchResultsResponse {
+  query: string
+  total: number
+  results: SearchResult[]
+}
+
 // ─── SSE Streaming (orchestrate/stream) ──────────────────────────────────────
 
 export type StreamEventType =

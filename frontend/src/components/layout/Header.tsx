@@ -1,8 +1,10 @@
-import { Bell, Download, LogOut } from 'lucide-react'
+import { Bell, Download, LogOut, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useInstallPrompt } from '../../hooks/useInstallPrompt'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { GlobalSearch } from '../search/GlobalSearch'
 
 interface HeaderProps {
   title: string
@@ -13,6 +15,19 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { canInstall, install } = useInstallPrompt()
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // Ctrl+K / Cmd+K opens global search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -31,6 +46,28 @@ export function Header({ title, subtitle }: HeaderProps) {
         {subtitle && <p className="text-gray-500 text-sm">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-3">
+        {/* Global search trigger */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Search (Ctrl+K)"
+          className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-surface-border bg-surface-card text-gray-400 hover:text-white hover:border-brand-700/60 transition-all text-xs"
+        >
+          <Search className="h-4 w-4" />
+          <span className="text-gray-500">Search</span>
+          <kbd className="ml-1 rounded border border-[#334155] px-1 py-0.5 text-[10px] font-mono text-gray-600">⌃K</kbd>
+        </button>
+
+        {/* Mobile search icon only */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          title="Search"
+          className="sm:hidden h-9 w-9 rounded-lg border border-surface-border flex items-center justify-center text-gray-400 hover:text-white hover:border-brand-700/60 transition-all"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+
+        <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
         {canInstall && (
           <button
             onClick={install}

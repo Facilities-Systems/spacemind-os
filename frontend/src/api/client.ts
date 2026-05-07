@@ -25,6 +25,7 @@ import type {
   MedicalItem,
   Requisition,
   ReqStatus,
+  SearchResultsResponse,
   SensorReading,
   SensorSummary,
   SignOutTx,
@@ -451,6 +452,23 @@ export const api = {
 
   generateReport: async (report_type: string): Promise<{ report_type: string; content: string }> => {
     const { data } = await http.post<{ report_type: string; content: string }>('/reports/generate', { report_type })
+    return data
+  },
+
+  // ── Search ───────────────────────────────────────────────────────────────────
+
+  search: async (
+    q: string,
+    domains?: string[],
+    limit = 20,
+  ): Promise<SearchResultsResponse> => {
+    const { data } = await http.get<SearchResultsResponse>('/search', {
+      params: {
+        q,
+        limit,
+        ...(domains?.length && { domains: domains.join(',') }),
+      },
+    })
     return data
   },
 }
