@@ -43,7 +43,7 @@ def test_log_incident(client: TestClient, auth_headers: dict):
     assert resp.status_code == 201
     data = resp.json()
     assert data["status"] == "Open"
-    return data["id"]
+    assert "id" in data
 
 
 def test_resolve_incident(client: TestClient, auth_headers: dict):

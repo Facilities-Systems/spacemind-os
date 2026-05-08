@@ -24,6 +24,7 @@ const DecomposePage         = lazy(() => import('./pages/DecomposePage').then(m 
 const HistoryPage           = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })))
 const LocationsPage         = lazy(() => import('./pages/LocationsPage').then(m => ({ default: m.LocationsPage })))
 const StoreroomPage         = lazy(() => import('./pages/StoreroomPage').then(m => ({ default: m.StoreroomPage })))
+const SignOutPage           = lazy(() => import('./pages/SignOutPage').then(m => ({ default: m.SignOutPage })))
 const FloorPlansPage        = lazy(() => import('./pages/FloorPlansPage').then(m => ({ default: m.FloorPlansPage })))
 const MedicalPage           = lazy(() => import('./pages/MedicalPage').then(m => ({ default: m.MedicalPage })))
 const ConciergePage         = lazy(() => import('./pages/ConciergePage').then(m => ({ default: m.ConciergePage })))
@@ -81,7 +82,7 @@ export default function App() {
                 <Route path="/locations"     element={<LocationsPage />} />
                 <Route path="/storeroom"     element={<StoreroomPage />} />
                 <Route path="/inventory"     element={<StoreroomPage />} />
-                <Route path="/signout"       element={<StoreroomPage />} />
+                <Route path="/signout"       element={<SignOutPage />} />
                 <Route path="/floor-plans"   element={<FloorPlansPage />} />
                 <Route path="/medical"       element={<MedicalPage />} />
                 <Route path="/concierge"     element={<ConciergePage />} />

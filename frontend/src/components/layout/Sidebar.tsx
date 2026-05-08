@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   Activity,
+  ArrowRightLeft,
   BarChart3,
   BrainCircuit,
   ClipboardList,
@@ -17,6 +18,7 @@ import {
 
 const primaryNav = [
   { to: '/storeroom',      label: 'Storeroom',       icon: Package },
+  { to: '/signout',        label: 'Sign-Out',         icon: ArrowRightLeft },
   { to: '/assets',         label: 'Asset Lifecycle', icon: Activity },
   { to: '/floor-plans',    label: 'Floor Plans',     icon: LayoutTemplate },
   { to: '/tickets',        label: 'Help Desk',       icon: ClipboardList },
