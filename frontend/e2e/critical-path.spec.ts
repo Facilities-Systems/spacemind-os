@@ -137,7 +137,7 @@ test.describe('Critical path', () => {
   test('login navigates to dashboard', async ({ page }) => {
     await page.goto('/login')
     await page.getByLabel('Email').fill('test@spacemind.co')
-    await page.getByLabel('Password').fill('password123')
+    await page.locator('#auth-password').fill('password123')
     await page.locator('button[type="submit"]').click()
     await expect(page).toHaveURL(/\/(dashboard)?$/, { timeout: 10_000 })
   })
@@ -146,7 +146,7 @@ test.describe('Critical path', () => {
     // Seed token so the page loads as authenticated
     await page.goto('/login')
     await page.getByLabel('Email').fill('test@spacemind.co')
-    await page.getByLabel('Password').fill('password123')
+    await page.locator('#auth-password').fill('password123')
     await page.locator('button[type="submit"]').click()
     await page.waitForURL(/\/(dashboard)?$/, { timeout: 10_000 })
 
@@ -171,7 +171,7 @@ test.describe('Critical path', () => {
     // Authenticate
     await page.goto('/login')
     await page.getByLabel('Email').fill('test@spacemind.co')
-    await page.getByLabel('Password').fill('password123')
+    await page.locator('#auth-password').fill('password123')
     await page.locator('button[type="submit"]').click()
     await page.waitForURL(/\/(dashboard)?$/, { timeout: 10_000 })
 
