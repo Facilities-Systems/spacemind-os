@@ -160,7 +160,7 @@ export function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">{s.label}</p>
-                <p className="text-base font-bold text-white">{s.value}</p>
+                <p className="text-xs font-bold text-white sm:text-sm md:text-base">{s.value}</p>
               </div>
             </Card>
           ))}
