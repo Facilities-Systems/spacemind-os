@@ -40,12 +40,12 @@ export function Header({ title, subtitle }: HeaderProps) {
     : 'FM'
 
   return (
-    <header className="border-b border-surface-border bg-surface-card px-8 py-4 flex items-center justify-between">
-      <div>
-        <h1 className="text-white font-semibold text-lg">{title}</h1>
-        {subtitle && <p className="text-gray-500 text-sm">{subtitle}</p>}
+    <header className="border-b border-surface-border bg-surface-card px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <h1 className="text-white font-semibold text-base md:text-lg truncate">{title}</h1>
+        {subtitle && <p className="hidden sm:block text-gray-500 text-sm truncate">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3 shrink-0">
         {/* Global search trigger */}
         <button
           onClick={() => setSearchOpen(true)}

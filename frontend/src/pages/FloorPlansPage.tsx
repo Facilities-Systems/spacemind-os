@@ -340,8 +340,9 @@ export function FloorPlansPage() {
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Building selector */}
-          <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: '#1e3a5f' }}>
+          {/* Building selector — scrollable on mobile */}
+          <div className="overflow-x-auto pb-1 max-w-full">
+          <div className="flex gap-1 p-1 rounded-xl w-max" style={{ backgroundColor: '#1e3a5f' }}>
             {buildings.map((b, i) => (
               <button
                 key={b.id}
@@ -356,8 +357,9 @@ export function FloorPlansPage() {
               </button>
             ))}
           </div>
+          </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <button
               onClick={() => refetch()}
               className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"

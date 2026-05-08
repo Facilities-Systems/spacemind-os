@@ -679,8 +679,8 @@ export function SmartInsightsPage() {
             {/* Recent reports — static mock */}
             <div>
               <h2 className="text-white font-bold text-xs tracking-widest uppercase mb-3">RECENT REPORTS</h2>
-              <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#6366f1' }}>
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto rounded-xl border-2" style={{ borderColor: '#6366f1' }}>
+                <table className="w-full min-w-[480px] text-sm">
                   <thead>
                     <tr style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}>
                       {['Report Name', 'Generated', 'Size', 'Actions'].map(h => (

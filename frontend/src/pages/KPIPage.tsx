@@ -195,8 +195,8 @@ export function KPIPage() {
             <CheckCircle2 className="h-4 w-4 text-indigo-400" />
             COMPLIANCE METRICS
           </h2>
-          <div className="rounded-xl border-2 overflow-hidden" style={{ borderColor: '#6366f1' }}>
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border-2" style={{ borderColor: '#6366f1' }}>
+            <table className="w-full min-w-[420px] text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'rgba(99,102,241,0.15)' }}>
                   {['Metric', 'Current', 'Target', 'Status'].map(h => (

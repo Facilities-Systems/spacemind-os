@@ -159,7 +159,7 @@ export function DashboardPage() {
                 <s.icon className={`h-4 w-4 ${s.color}`} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-gray-500 truncate">{s.label}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">{s.label}</p>
                 <p className="text-base font-bold text-white">{s.value}</p>
               </div>
             </Card>

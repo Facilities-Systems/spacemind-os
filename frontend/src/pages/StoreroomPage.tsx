@@ -425,7 +425,8 @@ export function StoreroomPage() {
         </div>
 
         {/* ── Tabs ────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ backgroundColor: '#1e3a5f' }}>
+        <div className="overflow-x-auto -mx-4 px-4 md:-mx-8 md:px-8 pb-1">
+        <div className="flex gap-1 p-1 rounded-xl w-max" style={{ backgroundColor: '#1e3a5f' }}>
           {tabs.map(t => (
             <button
               key={t.key}
@@ -448,6 +449,7 @@ export function StoreroomPage() {
               )}
             </button>
           ))}
+        </div>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════
